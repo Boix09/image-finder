@@ -244,7 +244,7 @@ class Library:
             self._dimensions[key] = (stat.st_mtime_ns, stat.st_size, width, height)
         return width, height
 
-    def images(self, folder: str = "") -> list[dict]:
+    def images(self, folder: str = "", page: int | None = None, page_size: int | None = None) -> list[dict]:
         base = self.root if not folder else self.resolve(folder)
         if not base.is_dir():
             raise LibraryError(f"dossier introuvable : {folder}")
@@ -253,48 +253,97 @@ class Library:
         mtime = self._folder_mtime(cache_key) if cache_key != "__root__" else self._root_mtime()
         cached = self._images_cache.get(cache_key)
         if cached and cached[0] == mtime:
-            return cached[1]
+            result = cached[1]
+        else:
+            manifest_cache: dict[Path, dict] = {}
+            result = []
+            for directory, filenames in self._walk(base):
+                manifest = self._manifest_map(directory, manifest_cache)
+                for name in filenames:
+                    suffix = Path(name).suffix.lower()
+                    if suffix not in IMAGE_EXTENSIONS:
+                        continue
+                    path = directory / name
+                    try:
+                        stat = path.stat()
+                    except OSError:
+                        continue
+                    meta = manifest.get(name, {})
+                    width = int(meta.get("width") or 0)
+                    height = int(meta.get("height") or 0)
+                    if not width or not height:
+                        width, height = self._probe_dimensions(path, stat)
+                    relative = self.relative(path)
+                    parts = relative.split("/")
+                    result.append(
+                        {
+                            "path": relative,
+                            "name": name,
+                            "folder": parts[0] if len(parts) > 1 else "",
+                            "size": stat.st_size,
+                            "mtime": int(stat.st_mtime),
+                            "width": width,
+                            "height": height,
+                            "title": str(meta.get("title") or Path(name).stem),
+                            "provider": str(meta.get("provider") or ""),
+                            "source_url": str(meta.get("page_url") or ""),
+                            "license": str(meta.get("license") or ""),
+                            "creator": str(meta.get("creator") or ""),
+                            "score": meta.get("score"),
+                        }
+                    )
+            result.sort(key=lambda item: (item["mtime"], item["name"].casefold()), reverse=True)
+            self._images_cache[cache_key] = (mtime, result)
 
-        manifest_cache: dict[Path, dict] = {}
-        result: list[dict] = []
-        for directory, filenames in self._walk(base):
-            manifest = self._manifest_map(directory, manifest_cache)
-            for name in filenames:
-                suffix = Path(name).suffix.lower()
-                if suffix not in IMAGE_EXTENSIONS:
-                    continue
-                path = directory / name
-                try:
-                    stat = path.stat()
-                except OSError:
-                    continue
-                meta = manifest.get(name, {})
-                width = int(meta.get("width") or 0)
-                height = int(meta.get("height") or 0)
-                if not width or not height:
-                    width, height = self._probe_dimensions(path, stat)
-                relative = self.relative(path)
-                parts = relative.split("/")
-                result.append(
-                    {
-                        "path": relative,
-                        "name": name,
-                        "folder": parts[0] if len(parts) > 1 else "",
-                        "size": stat.st_size,
-                        "mtime": int(stat.st_mtime),
-                        "width": width,
-                        "height": height,
-                        "title": str(meta.get("title") or Path(name).stem),
-                        "provider": str(meta.get("provider") or ""),
-                        "source_url": str(meta.get("page_url") or ""),
-                        "license": str(meta.get("license") or ""),
-                        "creator": str(meta.get("creator") or ""),
-                        "score": meta.get("score"),
-                    }
-                )
-        result.sort(key=lambda item: (item["mtime"], item["name"].casefold()), reverse=True)
-        self._images_cache[cache_key] = (mtime, result)
+        if page is not None and page_size is not None:
+            start = max(0, page - 1) * page_size
+            end = start + page_size
+            return result[start:end]
         return result
+
+    def images_count(self, folder: str = "") -> int:
+        base = self.root if not folder else self.resolve(folder)
+        if not base.is_dir():
+            raise LibraryError(f"dossier introuvable : {folder}")
+        return len(self.images(folder))
+
+    def cache_stats(self) -> dict:
+        """Retourne la taille du cache de miniatures."""
+        from imagefinder.service import TOOL_ROOT
+        from imagefinder.thumbs import _cache_dir
+        cache_dir = _cache_dir()
+        total = 0
+        count = 0
+        try:
+            for path in cache_dir.rglob("*"):
+                if path.is_file():
+                    try:
+                        total += path.stat().st_size
+                        count += 1
+                    except OSError:
+                        continue
+        except OSError:
+            pass
+        return {"count": count, "bytes": total, "path": str(cache_dir)}
+
+    def cache_clear(self) -> dict:
+        """Vide le cache de miniatures."""
+        from imagefinder.thumbs import _cache_dir
+        cache_dir = _cache_dir()
+        freed = 0
+        count = 0
+        try:
+            for path in list(cache_dir.rglob("*")):
+                if path.is_file():
+                    try:
+                        freed += path.stat().st_size
+                        path.unlink()
+                        count += 1
+                    except OSError:
+                        continue
+        except OSError:
+            pass
+        return {"freed": freed, "count": count, "path": str(cache_dir)}
 
     def image_path(self, relative: str) -> Path:
         path = self.resolve(relative, must_exist=True)

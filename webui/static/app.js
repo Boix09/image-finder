@@ -36,6 +36,8 @@
     lastFocused: null,
     emptyMode: "search",
     folderIntent: "navigate",
+    pagination: { page: 1, pageSize: 50, total: 0, totalPages: 1 },
+    cache: { count: 0, bytes: 0 },
   };
 
   const els = {};
@@ -86,6 +88,15 @@
     els.imageFilter = $("#imageFilter");
     els.sortSelect = $("#sortSelect");
     els.refreshBtn = $("#refreshBtn");
+    els.pageSizeSelect = $("#pageSizeSelect");
+    els.paginationBar = $("#paginationBar");
+    els.paginationPrev = $("#paginationPrev");
+    els.paginationNext = $("#paginationNext");
+    els.paginationInfo = $("#paginationInfo");
+    els.paginationPage = $("#paginationPage");
+    els.paginationTotalPages = $("#paginationTotalPages");
+    els.cacheSummary = $("#cacheSummary");
+    els.clearCacheBtn = $("#clearCacheBtn");
     els.folderDialog = $("#folderDialog");
     els.folderForm = $("#folderForm");
     els.folderName = $("#folderName");
@@ -304,6 +315,23 @@
     els.storageLabel.textContent = plural(Number(state.totals.images || 0), "image", "images");
     els.storageSize.textContent = formatBytes(state.totals.bytes);
     els.folderSummary.textContent = plural(Number(state.totals.folders || 0), "dossier", "dossiers");
+    els.cacheSummary.textContent = `Cache : ${formatBytes(state.cache.bytes)} (${state.cache.count})`;
+
+    if (data.cache) {
+      state.cache = {
+        count: Number(data.cache.count || 0),
+        bytes: Number(data.cache.bytes || 0),
+      };
+    }
+
+    if (data.pagination) {
+      state.pagination = {
+        page: Number(data.pagination.page || 1),
+        pageSize: Number(data.pagination.page_size || 50),
+        total: Number(data.pagination.total || 0),
+        totalPages: Number(data.pagination.total_pages || 1),
+      };
+    }
 
     if (state.currentFolder && !state.folders.some((folder) => folder.name === state.currentFolder)) {
       state.currentFolder = "";
@@ -367,6 +395,7 @@
   async function selectFolder(folder, { scroll = false } = {}) {
     state.currentFolder = folder || "";
     state.filter = "";
+    state.pagination.page = 1;
     if (els.imageFilter) els.imageFilter.value = "";
     try {
       localStorage.setItem(FOLDER_KEY, state.currentFolder);
@@ -424,13 +453,21 @@
     const folder = state.currentFolder;
     showGalleryLoading();
     try {
-      const query = folder ? `?folder=${encodeURIComponent(folder)}` : "";
-      const data = await api(`/api/images${query}`);
+      const params = new URLSearchParams();
+      if (folder) params.set("folder", folder);
+      params.set("page", String(state.pagination.page));
+      params.set("page_size", String(state.pagination.pageSize));
+      const data = await api(`/api/images?${params.toString()}`);
       if (token !== state.loadToken) return;
       state.images = Array.isArray(data.images) ? data.images : [];
+      state.pagination.total = Number(data.total || 0);
+      state.pagination.totalPages = Number(data.total_pages || 1);
+      state.pagination.page = Number(data.page || 1);
+      state.pagination.pageSize = Number(data.page_size || 50);
       state.galleryBytes = Number(data.bytes || 0);
       els.galleryLoading.hidden = true;
       renderGallery();
+      renderPagination();
       setConnection(true);
     } catch (error) {
       if (token !== state.loadToken) return;
@@ -438,6 +475,8 @@
       state.images = [];
       state.rendered = [];
       state.galleryBytes = 0;
+      state.pagination.total = 0;
+      state.pagination.totalPages = 1;
       renderGallery(error.message);
       showToast(error.message, "error");
     }
@@ -556,6 +595,24 @@
       })
       .join("");
     observeLazyImages();
+    renderPagination();
+  }
+
+  function renderPagination() {
+    const total = state.pagination.total;
+    const totalPages = state.pagination.totalPages;
+    const page = state.pagination.page;
+
+    if (total === 0 || totalPages <= 1) {
+      els.paginationBar.hidden = true;
+      return;
+    }
+
+    els.paginationBar.hidden = false;
+    els.paginationPage.textContent = String(page);
+    els.paginationTotalPages.textContent = String(totalPages);
+    els.paginationPrev.disabled = page <= 1;
+    els.paginationNext.disabled = page >= totalPages;
   }
 
   function showEmptyState(title, text, actionLabel, mode) {
@@ -1071,6 +1128,36 @@
         showToast("Galerie actualisée.", "info", 2200);
       } finally {
         els.refreshBtn.classList.remove("spinning");
+      }
+    });
+
+    els.pageSizeSelect.addEventListener("change", () => {
+      state.pagination.pageSize = Number(els.pageSizeSelect.value) || 50;
+      state.pagination.page = 1;
+      loadImages();
+    });
+
+    els.paginationPrev.addEventListener("click", () => {
+      if (state.pagination.page > 1) {
+        state.pagination.page -= 1;
+        loadImages();
+      }
+    });
+
+    els.paginationNext.addEventListener("click", () => {
+      if (state.pagination.page < state.pagination.totalPages) {
+        state.pagination.page += 1;
+        loadImages();
+      }
+    });
+
+    els.clearCacheBtn.addEventListener("click", async () => {
+      try {
+        const data = await api("/api/cache/clear", { method: "POST" });
+        showToast(`Cache vidé : ${formatBytes(data.freed)} libérés (${data.count} fichiers).`);
+        await loadState();
+      } catch (error) {
+        showToast(error.message, "error", 6000);
       }
     });
 

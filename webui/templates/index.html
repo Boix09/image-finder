@@ -101,6 +101,10 @@
             <span id="storageSize">0 Mo</span>
           </div>
           <div class="storage-line muted" id="folderSummary">0 dossier</div>
+          <div class="storage-line muted" id="cacheSummary">Cache : 0 o</div>
+          <button class="link-btn" id="clearCacheBtn" type="button" title="Vider le cache de miniatures">
+            <svg class="icon"><use href="#icon-trash"/></svg><span>Vider le cache</span>
+          </button>
           <div class="version">Image Finder <span>v{{ version }}</span></div>
         </div>
       </div>
@@ -252,7 +256,26 @@
               <button class="icon-btn" id="refreshBtn" type="button" title="Rafraîchir la galerie">
                 <svg class="icon"><use href="#icon-refresh"/></svg>
               </button>
+              <label class="sort-field">
+                <svg class="icon"><use href="#icon-filter"/></svg>
+                <select id="pageSizeSelect" aria-label="Images par page">
+                  <option value="20">20 / page</option>
+                  <option value="50" selected>50 / page</option>
+                  <option value="100">100 / page</option>
+                </select>
+                <svg class="icon select-chevron"><use href="#icon-chevron-down"/></svg>
+              </label>
             </div>
+          </div>
+
+          <div class="pagination-bar" id="paginationBar" hidden>
+            <button class="icon-btn pagination-btn" id="paginationPrev" type="button" title="Page précédente" aria-label="Page précédente">
+              <svg class="icon"><use href="#icon-chevron-left"/></svg>
+            </button>
+            <span class="pagination-info" id="paginationInfo">Page <span id="paginationPage">1</span> sur <span id="paginationTotalPages">1</span></span>
+            <button class="icon-btn pagination-btn" id="paginationNext" type="button" title="Page suivante" aria-label="Page suivante">
+              <svg class="icon"><use href="#icon-chevron-right"/></svg>
+            </button>
           </div>
 
           <div class="gallery skeleton-grid" id="galleryLoading" hidden></div>

@@ -62,6 +62,10 @@ def create_app(
 
     def state_payload() -> dict:
         summary = library.summary()
+        try:
+            cache = library.cache_stats()
+        except Exception:
+            cache = {"count": 0, "bytes": 0, "path": ""}
         return {
             "ok": True,
             "version": VERSION,
@@ -75,6 +79,7 @@ def create_app(
                 "bytes": summary["bytes"],
                 "folders": len(summary["folders"]),
             },
+            "cache": cache,
             "csrf": csrf_token,
             "active_job": jobs.active(),
             "password_protected": bool(app.config["IMAGE_FINDER_PASSWORD"]),
@@ -208,14 +213,44 @@ def create_app(
     @app.get("/api/images")
     def api_images():
         folder = (request.args.get("folder") or "").strip()
-        images = library.images(folder)
+        page = _as_int(request.args.get("page"), 1)
+        page_size = _as_int(request.args.get("page_size"), 50)
+        if page < 1:
+            page = 1
+        if page_size < 1 or page_size > 200:
+            page_size = 50
+
+        total = library.images_count(folder)
+        total_pages = max(1, (total + page_size - 1) // page_size)
+        if page > total_pages:
+            page = total_pages
+
+        images = library.images(folder, page=page, page_size=page_size)
         return jsonify(
             ok=True,
             folder=folder,
+            page=page,
+            page_size=page_size,
+            total=total,
+            total_pages=total_pages,
+            has_prev=page > 1,
+            has_next=page < total_pages,
             count=len(images),
             bytes=sum(item["size"] for item in images),
             images=images,
         )
+
+    @app.get("/api/cache/stats")
+    def api_cache_stats():
+        return jsonify(ok=True, **library.cache_stats())
+
+    @app.post("/api/cache/clear")
+    def api_cache_clear():
+        if jobs.active():
+            raise JobConflict("attendez la fin de la recherche avant de vider le cache")
+        result = library.cache_clear()
+        library._invalidate()
+        return jsonify(ok=True, **result)
 
     @app.get("/api/thumb")
     def api_thumb():
@@ -265,6 +300,7 @@ def create_app(
             raise ApiError(str(exc)) from exc
         except OSError as exc:
             raise ApiError(f"impossible d'enregistrer la configuration : {exc}") from exc
+        library._invalidate()
         return jsonify(state_payload())
 
     @app.post("/api/folders")
