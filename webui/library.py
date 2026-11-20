@@ -309,8 +309,7 @@ class Library:
 
     def cache_stats(self) -> dict:
         """Retourne la taille du cache de miniatures."""
-        from imagefinder.service import TOOL_ROOT
-        from imagefinder.thumbs import _cache_dir
+        from .thumbs import _cache_dir
         cache_dir = _cache_dir()
         total = 0
         count = 0
@@ -333,7 +332,7 @@ class Library:
 
     def cache_clear(self) -> dict:
         """Vide le cache de miniatures."""
-        from imagefinder.thumbs import _cache_dir
+        from .thumbs import _cache_dir
         cache_dir = _cache_dir()
         freed = 0
         count = 0
