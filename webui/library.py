@@ -315,15 +315,20 @@ class Library:
         total = 0
         count = 0
         try:
-            for path in cache_dir.rglob("*"):
-                if path.is_file():
-                    try:
-                        total += path.stat().st_size
-                        count += 1
-                    except OSError:
-                        continue
-        except OSError:
-            pass
+            entries = list(cache_dir.rglob("*"))
+        except Exception:
+            entries = []
+        for path in entries:
+            try:
+                if not path.is_file():
+                    continue
+                try:
+                    total += path.stat().st_size
+                    count += 1
+                except Exception:
+                    continue
+            except Exception:
+                continue
         return {"count": count, "bytes": total, "path": str(cache_dir)}
 
     def cache_clear(self) -> dict:
@@ -333,15 +338,36 @@ class Library:
         freed = 0
         count = 0
         try:
-            for path in list(cache_dir.rglob("*")):
-                if path.is_file():
-                    try:
-                        freed += path.stat().st_size
-                        path.unlink()
-                        count += 1
-                    except OSError:
-                        continue
-        except OSError:
+            entries = list(cache_dir.rglob("*"))
+        except Exception:
+            entries = []
+        for path in entries:
+            try:
+                if not path.is_file():
+                    continue
+                try:
+                    freed += path.stat().st_size
+                except Exception:
+                    pass
+                try:
+                    path.unlink()
+                    count += 1
+                except Exception:
+                    continue
+            except Exception:
+                continue
+        # Nettoyage des dossiers vides laisses derriere
+        try:
+            for dirpath in sorted(
+                [p for p in cache_dir.rglob("*") if p.is_dir()],
+                key=lambda p: len(p.parts),
+                reverse=True,
+            ):
+                try:
+                    dirpath.rmdir()
+                except Exception:
+                    continue
+        except Exception:
             pass
         return {"freed": freed, "count": count, "path": str(cache_dir)}
 

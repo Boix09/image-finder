@@ -248,7 +248,10 @@ def create_app(
     def api_cache_clear():
         if jobs.active():
             raise JobConflict("attendez la fin de la recherche avant de vider le cache")
-        result = library.cache_clear()
+        try:
+            result = library.cache_clear()
+        except Exception as exc:
+            raise ApiError(f"impossible de vider le cache : {exc}") from exc
         library._invalidate()
         return jsonify(ok=True, **result)
 
