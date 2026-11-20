@@ -31,6 +31,7 @@
     jobAutoHide: null,
     pollTimer: null,
     pollFails: 0,
+    filterDebounce: null,
     lightboxIndex: -1,
     lastFocused: null,
     emptyMode: "search",
@@ -536,7 +537,7 @@
         return `
           <article class="card" data-path="${escapeHtml(item.path)}" style="--i:${Math.min(index, 20)}">
             <div class="card-media">
-              <img src="${thumbUrl(item.path, 480, item.mtime)}" alt="${escapeHtml(title)}" loading="lazy" decoding="async">
+              <img class="lazy-thumb" data-src="${thumbUrl(item.path, 480, item.mtime)}" alt="${escapeHtml(title)}" decoding="async">
               <div class="card-actions">
                 <button class="card-action" type="button" data-action="view" title="Agrandir">${icon("expand")}</button>
                 <a class="card-action" href="${downloadUrl(item.path)}" download title="Télécharger">${icon("download")}</a>
@@ -553,6 +554,7 @@
           </article>`;
       })
       .join("");
+    observeLazyImages();
   }
 
   function showEmptyState(title, text, actionLabel, mode) {
@@ -618,11 +620,11 @@
     setSearchBusy(job.status === "queued" || job.status === "running");
     els.jobPanel.scrollIntoView({ behavior: "smooth", block: "center" });
     if (job.status === "queued" || job.status === "running") {
-      schedulePoll(job.id, 450);
+      schedulePoll(job.id, 1500);
     }
   }
 
-  function schedulePoll(jobId, delay = 800) {
+  function schedulePoll(jobId, delay = 1500) {
     window.clearTimeout(state.pollTimer);
     state.pollTimer = window.setTimeout(() => pollJob(jobId), delay);
   }
@@ -647,7 +649,7 @@
     } catch (error) {
       state.pollFails += 1;
       if (state.pollFails < 4) {
-        schedulePoll(jobId, 1500);
+        schedulePoll(jobId, 2000);
       } else {
         failJob({ message: error.message || "Connexion perdue avec le serveur." });
       }
@@ -1028,7 +1030,10 @@
 
     els.imageFilter.addEventListener("input", () => {
       state.filter = els.imageFilter.value;
-      renderGallery();
+      window.clearTimeout(state.filterDebounce);
+      state.filterDebounce = window.setTimeout(() => {
+        renderGallery();
+      }, 150);
     });
 
     els.sortSelect.addEventListener("change", () => {
@@ -1151,6 +1156,39 @@
   }
 
   /* ------------------------------------------------------------
+     Lazy loading des miniatures
+     ------------------------------------------------------------ */
+
+  let lazyObserver = null;
+
+  function initLazyLoading() {
+    if (!window.IntersectionObserver) return;
+    lazyObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const img = entry.target;
+          if (img.dataset.src) {
+            img.src = img.dataset.src;
+            img.removeAttribute("data-src");
+            lazyObserver.unobserve(img);
+          }
+        }
+      },
+      { rootMargin: "200px", threshold: 0 }
+    );
+  }
+
+  function observeLazyImages() {
+    if (!lazyObserver) return;
+    $$(".lazy-thumb").forEach((img) => {
+      if (!img.src || img.src.includes("data:")) {
+        lazyObserver.observe(img);
+      }
+    });
+  }
+
+  /* ------------------------------------------------------------
      Démarrage
      ------------------------------------------------------------ */
 
@@ -1158,6 +1196,7 @@
     cacheElements();
     initTheme();
     bindEvents();
+    initLazyLoading();
 
     try {
       const data = await loadState();

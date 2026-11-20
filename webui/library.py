@@ -33,10 +33,31 @@ class Library:
         self.config = config
         self._dimensions: dict[str, tuple[int, int, int, int]] = {}
         self._dimension_lock = threading.Lock()
+        self._folders_cache: tuple[float, list[dict]] | None = None
+        self._summary_cache: tuple[float, dict] | None = None
+        self._images_cache: dict[str, tuple[float, list[dict]]] = {}
 
     @property
     def root(self) -> Path:
         return Path(self.config.root)
+
+    def _root_mtime(self) -> float:
+        try:
+            return self.root.stat().st_mtime
+        except OSError:
+            return 0.0
+
+    def _folder_mtime(self, folder: str) -> float:
+        try:
+            return (self.root / folder).stat().st_mtime
+        except OSError:
+            return 0.0
+
+    def _invalidate(self) -> None:
+        """Invalide les caches de niveau racine (appelé après modification)."""
+        self._folders_cache = None
+        self._summary_cache = None
+        self._images_cache.clear()
 
     def relative(self, path: Path) -> str:
         try:
@@ -86,6 +107,7 @@ class Library:
         if target.exists() and not target.is_dir():
             raise LibraryError(f"« {folder} » existe deja mais n'est pas un dossier")
         target.mkdir(parents=True, exist_ok=True)
+        self._invalidate()
         return target
 
     def create_folder(self, name: str) -> str:
@@ -94,6 +116,7 @@ class Library:
         if target.exists():
             raise LibraryError(f"le dossier « {folder} » existe deja")
         target.mkdir(parents=True)
+        self._invalidate()
         return folder
 
     def _walk(self, base: Path):
@@ -129,6 +152,9 @@ class Library:
     def folders(self) -> list[dict]:
         if not self.root.is_dir():
             return []
+        mtime = self._root_mtime()
+        if self._folders_cache and self._folders_cache[0] == mtime:
+            return self._folders_cache[1]
         result = []
         try:
             entries = sorted(self.root.iterdir(), key=lambda item: item.name.casefold())
@@ -150,9 +176,13 @@ class Library:
                     "cover": cover,
                 }
             )
+        self._folders_cache = (mtime, result)
         return result
 
     def summary(self) -> dict:
+        mtime = self._root_mtime()
+        if self._summary_cache and self._summary_cache[0] == mtime:
+            return self._summary_cache[1]
         folders = self.folders()
         images = sum(item["count"] for item in folders)
         total_bytes = sum(item["bytes"] for item in folders)
@@ -170,7 +200,9 @@ class Library:
             except OSError:
                 continue
             images += 1
-        return {"folders": folders, "images": images, "bytes": total_bytes}
+        payload = {"folders": folders, "images": images, "bytes": total_bytes}
+        self._summary_cache = (mtime, payload)
+        return payload
 
     def _manifest_map(self, directory: Path, cache: dict[Path, dict]) -> dict:
         if directory in cache:
@@ -217,10 +249,16 @@ class Library:
         if not base.is_dir():
             raise LibraryError(f"dossier introuvable : {folder}")
 
-        cache: dict[Path, dict] = {}
+        cache_key = folder or "__root__"
+        mtime = self._folder_mtime(cache_key) if cache_key != "__root__" else self._root_mtime()
+        cached = self._images_cache.get(cache_key)
+        if cached and cached[0] == mtime:
+            return cached[1]
+
+        manifest_cache: dict[Path, dict] = {}
         result: list[dict] = []
         for directory, filenames in self._walk(base):
-            manifest = self._manifest_map(directory, cache)
+            manifest = self._manifest_map(directory, manifest_cache)
             for name in filenames:
                 suffix = Path(name).suffix.lower()
                 if suffix not in IMAGE_EXTENSIONS:
@@ -255,6 +293,7 @@ class Library:
                     }
                 )
         result.sort(key=lambda item: (item["mtime"], item["name"].casefold()), reverse=True)
+        self._images_cache[cache_key] = (mtime, result)
         return result
 
     def image_path(self, relative: str) -> Path:
@@ -305,6 +344,7 @@ class Library:
         self._drop_manifest_entry(path.parent, path.name)
         with self._dimension_lock:
             self._dimensions.pop(str(path), None)
+        self._invalidate()
         return {"freed": size, "path": self.relative(path)}
 
     def delete_folder(self, relative: str) -> dict:
@@ -316,4 +356,5 @@ class Library:
         self._visible_parts(path)
         count, total, _, _ = self._scan(path)
         shutil.rmtree(path)
+        self._invalidate()
         return {"images": count, "freed": total, "path": self.relative(path)}

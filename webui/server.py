@@ -2,6 +2,7 @@ from __future__ import annotations
 
 """Application Flask de l'interface web."""
 
+import gzip
 import hmac
 import secrets
 from pathlib import Path
@@ -126,8 +127,36 @@ def create_app(
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "same-origin")
         response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+
+        # Compression gzip pour les réponses JSON/HTML textuelles
+        if (
+            response.status_code == 200
+            and response.content_type
+            and (
+                "application/json" in response.content_type
+                or "text/html" in response.content_type
+                or "text/css" in response.content_type
+                or "application/javascript" in response.content_type
+            )
+            and not response.content_encoding
+        ):
+            try:
+                data = response.get_data()
+                if len(data) > 512:
+                    compressed = gzip.compress(data, compresslevel=6)
+                    response.set_data(compressed)
+                    response.headers["Content-Encoding"] = "gzip"
+                    response.headers["Content-Length"] = str(len(compressed))
+                    response.headers.add("Vary", "Accept-Encoding")
+            except Exception:
+                pass
+
         if request.path == "/" or request.path.startswith("/api/"):
             response.headers.setdefault("Cache-Control", "no-store")
+        elif request.path.startswith("/api/thumb"):
+            response.headers.setdefault("Cache-Control", "public, max-age=31536000, immutable")
+        elif request.path.startswith("/api/image"):
+            response.headers.setdefault("Cache-Control", "public, max-age=3600")
         return response
 
     @app.errorhandler(ApiError)
