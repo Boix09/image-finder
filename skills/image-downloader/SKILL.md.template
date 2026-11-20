@@ -1,6 +1,6 @@
 ---
 name: Image Downloader
-description: Rechercher et telecharger des images existantes sur Internet (les plus populaires, pertinentes ou belles) dans un dossier precis. A utiliser des que l'utilisateur demande de trouver, recuperer ou telecharger des images ou des photos, meme formule en langage naturel.
+description: Rechercher et telecharger des images existantes sur Internet (les plus populaires, pertinentes ou belles) dans un dossier precis. A utiliser des que l'utilisateur demande de trouver, recuperer, telecharger, chercher ou obtenir des images, photos, visuels, illustrations ou captures, meme formule en langage naturel, longue ou detaillee. Ne pas generer d'images par IA pour des demandes portant sur des images reelles.
 ---
 
 # Image Downloader
@@ -8,6 +8,30 @@ description: Rechercher et telecharger des images existantes sur Internet (les p
 Ce projet dispose d'un outil dedie pour chercher et telecharger des images
 existantes sur Internet. Ne genere jamais une image par IA quand la demande
 porte sur des images reelles : utilise cet outil.
+
+## Quand utiliser cet outil
+
+Declenchez cet outil des que l'utilisateur demande, sous quelque forme que ce soit :
+
+- "telecharge X images de <sujet>"
+- "cherche des photos de <sujet>"
+- "trouve des visuels de <sujet>"
+- "recupere des images de <sujet>"
+- "montre-moi des images de <sujet>"
+- "j'ai besoin d'images de <sujet>"
+- "image de <sujet>" (meme sans verbe d'action)
+- toute demande longue, detaillee ou precise mentionnant des images, photos, visuels ou captures
+
+Exemples de prompts qui doivent declencher cet outil :
+
+- "telecharge 5 belles images de voiture de sport dans le dossier voitures"
+- "je veux des photos de montagnes enneigees au lever du soleil pour un fond d'ecran"
+- "trouve 10 images de chats mignons, en portrait, dans le dossier animaux"
+- "recupere des visuels d'architecture minimaliste interieur chaleureux"
+- "montre-moi des images de voitures anciennes des annees 60"
+- "j'ai besoin de photos de paysages de bord de mer en haute resolution"
+
+Ne genere jamais d'image par IA pour ces demandes : l'outil recherche et telecharge des images REELLES existantes sur Internet.
 
 ## Outil a utiliser
 

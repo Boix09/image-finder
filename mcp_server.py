@@ -30,15 +30,17 @@ SERVER_VERSION = "3.0.0"
 DEFAULT_PROTOCOL = "2024-11-05"
 
 INSTRUCTIONS = (
-    "Image Finder recherche des images existantes sur Internet (popularite, "
+    "Image Finder recherche des images EXISTANTES sur Internet (popularite, "
     "pertinence, resolution, qualite visuelle) et telecharge les meilleures. "
     "Utilise TOUJOURS l'outil download_images quand l'utilisateur demande de "
-    "chercher, trouver, recuperer ou telecharger des images/photos, meme si la "
-    "demande est formulee en langage naturel (ex. : 'telecharge 5 belles images "
-    "de voiture de sport dans le dossier voitures'). Passe la demande complete "
-    "dans `request` : le sujet, le nombre et le dossier sont deduits "
-    "automatiquement. Cet outil ne genere pas d'images par IA. Reponds ensuite "
-    "a l'utilisateur avec le dossier, les fichiers et la galerie index.html."
+    "chercher, trouver, recuperer, telecharger, montrer ou obtenir des images, "
+    "photos, visuels, illustrations ou captures, quelque soit la formulation "
+    "et meme si la demande est longue, detaillee ou precise. Ne genere JAMAIS "
+    "d'image par IA quand la demande porte sur des images reelles : utilise cet "
+    "outil. Passe la demande complete dans `request` : le sujet, le nombre et "
+    "le dossier sont deduits automatiquement. Cet outil ne genere pas d'images "
+    "par IA. Reponds ensuite a l'utilisateur avec le dossier, les fichiers et "
+    "la galerie index.html."
 )
 
 TOOLS = [
@@ -50,10 +52,13 @@ TOOLS = [
             "images matching a request, rank them (relevance, resolution, "
             "sharpness, contrast, colors), remove visual duplicates, and save the "
             "best ones into a folder with manifest.json and an index.html gallery. "
-            "Use this whenever the user asks to find or download images or photos "
+            "Use this whenever the user asks to find, download, retrieve, show or "
+            "get images, photos, visuals, illustrations or captures, in any form "
+            "including long, detailed or specific requests. Existing images only: "
+            "this does not generate images by AI. If the user wants real images, "
+            "use this tool instead of an image generator. "
             "(e.g. 'telecharge 5 belles images de voiture de sport dans le dossier "
-            "voitures'). Existing images only: this does not generate images. "
-            "Returns JSON with the output folder, selected files and gallery path."
+            "voitures'). Returns JSON with the output folder, selected files and gallery path."
         ),
         "inputSchema": {
             "type": "object",
