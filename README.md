@@ -191,6 +191,7 @@ python web_app.py --host 0.0.0.0 --port 8420 --password "votre-secret"
 L'interface inclut :
 - une grande barre de recherche avec suggestions,
 - la creation de dossiers depuis l'interface (crees automatiquement sur disque),
+- un bouton **Parcourir** pour choisir visuellement le repertoire racine (Chrome/Edge récents),
 - le changement de repertoire racine,
 - une galerie avec miniatures, filtre et tri,
 - un aperçu (lightbox) avec telechargement et suppression,

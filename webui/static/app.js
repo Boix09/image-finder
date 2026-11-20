@@ -96,6 +96,7 @@
     els.rootPathInput = $("#rootPathInput");
     els.rootError = $("#rootError");
     els.rootSubmit = $("#rootSubmit");
+    els.rootBrowseBtn = $("#rootBrowseBtn");
     els.confirmDialog = $("#confirmDialog");
     els.confirmTitle = $("#confirmTitle");
     els.confirmMessage = $("#confirmMessage");
@@ -924,6 +925,27 @@
     }
   }
 
+  async function browseFolder() {
+    if (!window.showDirectoryPicker) {
+      showToast(
+        "Le sélecteur de dossier natif n'est pas supporté par ce navigateur. Copiez-collez le chemin manuellement.",
+        "info",
+        6000
+      );
+      return;
+    }
+    try {
+      const handle = await window.showDirectoryPicker();
+      const path = handle.path;
+      els.rootPathInput.value = path;
+      els.rootError.hidden = true;
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        showToast("Impossible d'ouvrir le sélecteur de dossier.", "error", 5000);
+      }
+    }
+  }
+
   /* ------------------------------------------------------------
      Changement de racine
      ------------------------------------------------------------ */
@@ -1023,6 +1045,7 @@
     els.sidebarScrim.addEventListener("click", () => setSidebar(false));
 
     els.changeRootBtn.addEventListener("click", openRootDialog);
+    els.rootBrowseBtn.addEventListener("click", browseFolder);
     els.rootForm.addEventListener("submit", submitRoot);
     els.rootDialog.addEventListener("close", () => {
       els.rootError.hidden = true;

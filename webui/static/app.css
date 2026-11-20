@@ -2041,6 +2041,20 @@ body.lightbox-open {
   font-size: 0.78rem;
 }
 
+.root-path-picker {
+  display: flex;
+  gap: 6px;
+}
+
+.root-path-picker .text-input {
+  flex: 1;
+}
+
+.root-path-picker .btn {
+  width: 44px;
+  padding: 0;
+}
+
 .input-hint {
   margin: 7px 0 0;
   color: var(--faint);

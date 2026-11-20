@@ -331,7 +331,12 @@
         <div><h2>Changer de répertoire</h2><p>Chemin sur la machine qui exécute Image Finder.</p></div>
       </div>
       <label class="input-label" for="rootPathInput">Répertoire de la bibliothèque</label>
-      <input class="text-input mono" id="rootPathInput" name="rootPath" type="text" placeholder="D:\images  ou  /var/www/images" required>
+      <div class="root-path-picker">
+        <input class="text-input mono" id="rootPathInput" name="rootPath" type="text" placeholder="D:\images  ou  /var/www/images" required>
+        <button class="btn btn-ghost" type="button" id="rootBrowseBtn" title="Parcourir">
+          <svg class="icon"><use href="#icon-folder"/></svg>
+        </button>
+      </div>
       <p class="input-hint">Le dossier sera créé s'il n'existe pas. Les images déjà présentes seront affichées.</p>
       <p class="form-error" id="rootError" hidden></p>
       <div class="modal-actions">
