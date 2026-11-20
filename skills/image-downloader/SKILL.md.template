@@ -1,0 +1,96 @@
+---
+name: Image Downloader
+description: Rechercher et telecharger des images existantes sur Internet (les plus populaires, pertinentes ou belles) dans un dossier precis. A utiliser des que l'utilisateur demande de trouver, recuperer ou telecharger des images ou des photos, meme formule en langage naturel.
+---
+
+# Image Downloader
+
+Ce projet dispose d'un outil dedie pour chercher et telecharger des images
+existantes sur Internet. Ne genere jamais une image par IA quand la demande
+porte sur des images reelles : utilise cet outil.
+
+## Outil a utiliser
+
+Serveur MCP local : `image-finder` (demarre automatiquement par OpenCode).
+
+- Outil : `image-finder_download_images`
+- En Code Mode : `tools["image-finder"].download_images(...)`
+
+Parametres :
+
+| Parametre | Type | Role |
+|---|---|---|
+| `request` | string (obligatoire) | La demande complete en langage naturel. Le sujet, le nombre et le dossier sont extraits automatiquement. |
+| `output_dir` | string | Dossier de destination explicite (absolu ou relatif au dossier du programme). A ne remplir que si l'utilisateur donne un chemin precis. |
+| `limit` | integer 1-60 | Nombre d'images a garder (defaut 10). Deduis-le si l'utilisateur dit « 3 images ». |
+| `source` | `all`, `yandex`, `commons`, `ddg`, `openverse` | `all` par defaut (Yandex + Wikimedia Commons). `commons` pour des licences explicites. |
+| `orientation` | `any`, `landscape`, `portrait`, `square` | Orientation souhaitee. |
+| `min_side` | integer | Petit cote minimum en pixels (defaut 700). |
+| `dry_run` | boolean | Afficher les resultats sans telecharger. |
+
+## Marche a suivre
+
+1. Passe la phrase complete de l'utilisateur dans `request`, par exemple :
+   `telecharge 5 belles images de voiture de sport dans le dossier voitures`.
+2. Ajoute `limit` si un nombre est explicite, et `orientation` si l'utilisateur
+   parle de paysage, portrait ou carre.
+3. Ne mets `output_dir` que si l'utilisateur donne un chemin explicite
+   (ex. `D:/images/voitures`). Sinon laisse le programme deduire le
+   dossier de la phrase (« dans le dossier voitures »).
+4. L'outil renvoie un JSON : `ok`, `query`, `output_dir`, `count`, `files`,
+   `images`, `manifest`, `gallery`.
+5. Reponds en francais avec :
+   - le dossier absolu (`output_dir`) ;
+   - le nombre d'images et leurs noms ;
+   - le chemin de `manifest.json` et de `index.html` ;
+   - un avertissement sur les licences (surtout pour Yandex).
+6. Si l'utilisateur le demande, ouvre la galerie :
+   `start "" "<output_dir>/index.html"` (Windows).
+
+## Si l'outil MCP n'est pas disponible
+
+Lance le programme en mode machine et lis le JSON de sortie :
+
+```bat
+"{{PYTHON}}" "{{IMAGE_FINDER_DIR}}/image_finder.py" "<demande complete>" --json
+```
+
+Options utiles : `--json -n 5 --orientation landscape --source commons --dry-run`.
+
+Ne fabrique jamais de resultats : si la commande echoue, rapporte l'erreur.
+
+## Erreurs courantes
+
+- **Yandex timeout ou captcha** : le programme continue avec Wikimedia Commons.
+  Si aucun resultat, relance avec `source: "commons"` ou demande une autre
+  formulation.
+- **« aucune image valide »** : le filtre de resolution/orientation a tout
+  rejete. Reessaie avec `min_side: 0` ou une autre orientation.
+- **Dossier invalide** : verifie que `output_dir` n'est pas un fichier existant.
+
+## Dossier par defaut
+
+Sans dossier precise, les images vont dans :
+
+```text
+{{IMAGE_FINDER_DIR}}/images/<sujet>/
+```
+
+Un dossier mentionne dans la phrase (« dans le dossier voitures ») est cree dans
+`{{IMAGE_FINDER_DIR}}/`. Un `output_dir` explicite est utilise tel quel.
+
+Chaque sortie contient les images numerotees, `manifest.json` (source, auteur,
+licence, score) et `index.html` (galerie locale).
+
+## Installation et verification
+
+```bat
+cd /d "{{IMAGE_FINDER_DIR}}"
+python install.py --check
+```
+
+Pour reinstaller ou mettre a jour l'integration OpenCode :
+
+```bat
+python install.py
+```

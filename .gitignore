@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Sorties generees
+images/
+downloads/
+voitures/
+test_*/
+.staging_*/
+*.part
+
+# Divers
+*.log
+.DS_Store
+Thumbs.db
