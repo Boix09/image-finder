@@ -38,6 +38,7 @@
     folderIntent: "navigate",
     pagination: { page: 1, pageSize: 50, total: 0, totalPages: 1 },
     cache: { count: 0, bytes: 0 },
+    virtual: { rendered: 0, batchSize: 12, sentinelObserver: null },
   };
 
   const els = {};
@@ -566,36 +567,88 @@
 
     els.emptyState.hidden = true;
     els.gallery.hidden = false;
-    els.gallery.innerHTML = list
-      .map((item, index) => {
-        const title = item.title && item.title !== "Sans titre" ? item.title : item.name;
-        const dimensions = item.width && item.height ? `${item.width} × ${item.height}` : "dimensions inconnues";
-        const meta = [dimensions, formatBytes(item.size), formatDate(item.mtime)].filter(Boolean).join(" · ");
-        const folderBadge = item.folder
-          ? `<span class="card-folder" title="${escapeHtml(item.folder)}">${escapeHtml(item.folder)}</span>`
-          : "";
-        return `
-          <article class="card" data-path="${escapeHtml(item.path)}" style="--i:${Math.min(index, 20)}">
-            <div class="card-media">
-              <img class="lazy-thumb" data-src="${thumbUrl(item.path, 480, item.mtime)}" alt="${escapeHtml(title)}" decoding="async">
-              <div class="card-actions">
-                <button class="card-action" type="button" data-action="view" title="Agrandir">${icon("expand")}</button>
-                <a class="card-action" href="${downloadUrl(item.path)}" download title="Télécharger">${icon("download")}</a>
-                <button class="card-action danger" type="button" data-action="delete" title="Supprimer">${icon("trash")}</button>
-              </div>
-            </div>
-            <div class="card-body">
-              <div class="card-info">
-                <div class="card-name" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
-                <div class="card-meta" title="${escapeHtml(item.name)}">${escapeHtml(meta)}</div>
-              </div>
-              ${folderBadge}
-            </div>
-          </article>`;
-      })
-      .join("");
-    observeLazyImages();
+    state.virtual.rendered = 0;
+    els.gallery.innerHTML = `<div class="gallery-sentinel" id="virtualSentinel"></div>`;
+    renderVirtualBatch();
     renderPagination();
+  }
+
+  function renderVirtualBatch() {
+    const list = state.rendered;
+    if (!list.length) return;
+
+    const start = state.virtual.rendered;
+    const end = Math.min(start + state.virtual.batchSize, list.length);
+    if (start >= end) {
+      // Plus rien à rendre, masquer le sentinelle
+      const sentinel = $("#virtualSentinel");
+      if (sentinel) sentinel.hidden = true;
+      return;
+    }
+
+    const batch = list.slice(start, end);
+    const container = els.gallery;
+    const fragment = document.createDocumentFragment();
+
+    batch.forEach((item, index) => {
+      const title = item.title && item.title !== "Sans titre" ? item.title : item.name;
+      const dimensions = item.width && item.height ? `${item.width} × ${item.height}` : "dimensions inconnues";
+      const meta = [dimensions, formatBytes(item.size), formatDate(item.mtime)].filter(Boolean).join(" · ");
+      const folderBadge = item.folder
+        ? `<span class="card-folder" title="${escapeHtml(item.folder)}">${escapeHtml(item.folder)}</span>`
+        : "";
+      const article = document.createElement("article");
+      article.className = "card";
+      article.setAttribute("data-path", escapeHtml(item.path));
+      article.style.setProperty("--i", String(Math.min(start + index, 20)));
+      article.innerHTML = `
+        <div class="card-media">
+          <img class="lazy-thumb progressive-img" data-src="${thumbUrl(item.path, 480, item.mtime)}" alt="${escapeHtml(title)}" decoding="async">
+          <div class="card-actions">
+            <button class="card-action" type="button" data-action="view" title="Agrandir">${icon("expand")}</button>
+            <a class="card-action" href="${downloadUrl(item.path)}" download title="Télécharger">${icon("download")}</a>
+            <button class="card-action danger" type="button" data-action="delete" title="Supprimer">${icon("trash")}</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-info">
+            <div class="card-name" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
+            <div class="card-meta" title="${escapeHtml(item.name)}">${escapeHtml(meta)}</div>
+          </div>
+          ${folderBadge}
+        </div>`;
+      fragment.appendChild(article);
+    });
+
+    const sentinel = $("#virtualSentinel");
+    container.insertBefore(fragment, sentinel);
+    state.virtual.rendered = end;
+    observeLazyImages();
+    observeVirtualSentinel();
+  }
+
+  function initVirtualScroll() {
+    if (!window.IntersectionObserver) {
+      renderVirtualBatch(); // fallback: tout d'un coup
+      return;
+    }
+    state.virtual.sentinelObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            renderVirtualBatch();
+          }
+        }
+      },
+      { rootMargin: "300px", threshold: 0 }
+    );
+  }
+
+  function observeVirtualSentinel() {
+    const sentinel = $("#virtualSentinel");
+    if (sentinel && state.virtual.sentinelObserver) {
+      state.virtual.sentinelObserver.observe(sentinel);
+    }
   }
 
   function renderPagination() {
@@ -1282,6 +1335,16 @@
             img.src = img.dataset.src;
             img.removeAttribute("data-src");
             lazyObserver.unobserve(img);
+            img.addEventListener(
+              "load",
+              () => img.classList.add("loaded"),
+              { once: true }
+            );
+            img.addEventListener(
+              "error",
+              () => img.classList.add("loaded"),
+              { once: true }
+            );
           }
         }
       },
@@ -1296,6 +1359,22 @@
         lazyObserver.observe(img);
       }
     });
+    $$(".progressive-img").forEach((img) => {
+      if (img.complete && img.src && !img.src.includes("data:")) {
+        img.classList.add("loaded");
+      } else if (!img.classList.contains("loaded")) {
+        img.addEventListener(
+          "load",
+          () => img.classList.add("loaded"),
+          { once: true }
+        );
+        img.addEventListener(
+          "error",
+          () => img.classList.add("loaded"),
+          { once: true }
+        );
+      }
+    });
   }
 
   /* ------------------------------------------------------------
@@ -1307,6 +1386,7 @@
     initTheme();
     bindEvents();
     initLazyLoading();
+    initVirtualScroll();
 
     try {
       const data = await loadState();

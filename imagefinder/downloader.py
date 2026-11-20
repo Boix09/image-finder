@@ -289,8 +289,17 @@ def finalize_selection(selected: list[Downloaded], output_dir: Path, slug: str) 
         width = item.quality.width if item.quality else item.width
         height = item.quality.height if item.quality else item.height
         dimensions = f"{width}x{height}" if width and height else "image"
-        extension = item.path.suffix.lower() or ".jpg"
-        filename = f"{rank:02d}_{slug[:50]}_{dimensions}{extension}"
-        destination = unique_path(output_dir, filename)
-        shutil.move(str(item.path), str(destination))
+        destination = unique_path(output_dir, f"{rank:02d}_{slug[:50]}_{dimensions}.webp")
+        try:
+            from PIL import Image
+            with Image.open(item.path) as image:
+                if image.mode in ("RGBA", "LA", "P"):
+                    image = image.convert("RGB")
+                image.save(destination, "WEBP", quality=85, method=6)
+            item.path.unlink(missing_ok=True)
+        except Exception:
+            # Fallback : garde le format original si la conversion echoue
+            extension = item.path.suffix.lower() or ".jpg"
+            destination = unique_path(output_dir, f"{rank:02d}_{slug[:50]}_{dimensions}{extension}")
+            shutil.move(str(item.path), str(destination))
         item.path = destination

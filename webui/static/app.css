@@ -1697,6 +1697,25 @@ img {
 }
 
 /* ------------------------------------------------------------
+   Chargement progressif (placeholder flou -> full)
+   ------------------------------------------------------------ */
+
+.progressive-img {
+  filter: blur(10px);
+  opacity: 0;
+  transition: filter 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease;
+}
+
+.progressive-img.loaded {
+  filter: none;
+  opacity: 1;
+}
+
+.progressive-img[data-src] {
+  background: var(--surface-2);
+}
+
+/* ------------------------------------------------------------
    Skeleton cards
    ------------------------------------------------------------ */
 
