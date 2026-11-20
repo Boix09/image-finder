@@ -26,7 +26,7 @@ DEFAULT_SOURCE = "all"
 ALLOWED_SOURCES = ("all", "yandex", "commons", "ddg", "openverse")
 ALLOWED_ORIENTATIONS = ("any", "landscape", "portrait", "square")
 
-# D:\easyshopeht\image_finder : tout reste dans le dossier du programme.
+# Tout reste dans le dossier du programme (voir TOOL_ROOT).
 TOOL_ROOT = Path(__file__).resolve().parent.parent
 
 
