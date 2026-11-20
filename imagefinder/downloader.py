@@ -5,6 +5,7 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 import requests
 
@@ -177,8 +178,17 @@ def download_candidates(
     staging_dir: Path,
     max_bytes: int,
     workers: int,
+    progress: Callable[[int, int], None] | None = None,
 ) -> list[Downloaded]:
+    """Telecharge les candidats et signale l'avancement (faits, total)."""
+    total = len(candidates)
     results: list[Downloaded] = []
+    done = 0
+    if progress is not None:
+        try:
+            progress(0, total)
+        except Exception:
+            pass
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = [
             executor.submit(download_candidate, candidate, staging_dir, max_bytes, index)
@@ -189,6 +199,12 @@ def download_candidates(
                 results.append(future.result())
             except Exception as exc:
                 print(f"  erreur de telechargement : {exc}")
+            done += 1
+            if progress is not None:
+                try:
+                    progress(done, total)
+                except Exception:
+                    pass
     return results
 
 

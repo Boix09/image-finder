@@ -12,6 +12,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Callable
 
 from .downloader import download_candidates, finalize_selection, pick_best
 from .fileutil import safe_dirname, slugify
@@ -28,6 +29,18 @@ ALLOWED_ORIENTATIONS = ("any", "landscape", "portrait", "square")
 
 # Tout reste dans le dossier du programme (voir TOOL_ROOT).
 TOOL_ROOT = Path(__file__).resolve().parent.parent
+
+ProgressCallback = Callable[[dict], None]
+
+
+def _emit(callback: ProgressCallback | None, **event) -> None:
+    """Signale un evenement de progression sans jamais interrompre le travail."""
+    if callback is None:
+        return
+    try:
+        callback(event)
+    except Exception:
+        pass
 
 
 def default_base_dir() -> Path:
@@ -109,6 +122,7 @@ def run_download(
     workers: int = 6,
     gallery: bool = True,
     dry_run: bool = False,
+    progress: ProgressCallback | None = None,
 ) -> dict:
     """Cherche des images et telecharge les meilleures.
 
@@ -141,8 +155,20 @@ def run_download(
         raise RuntimeError(f"{destination} existe mais n'est pas un dossier")
 
     log_buffer = io.StringIO()
+    _emit(
+        progress,
+        stage="search",
+        message="Recherche des meilleures images...",
+        progress=4,
+    )
     with contextlib.redirect_stdout(log_buffer):
         candidates = search_images(query, source, limit)
+        _emit(
+            progress,
+            stage="search",
+            message=f"{len(candidates)} image(s) trouvee(s)",
+            progress=16,
+        )
 
         filtered = []
         for candidate in candidates:
@@ -165,12 +191,18 @@ def run_download(
         if not dry_run:
             selected, downloads = _download(
                 query, request, destination, filtered, limit, source,
-                orientation, min_side, max_mb, workers, gallery,
+                orientation, min_side, max_mb, workers, gallery, progress,
             )
 
     log = [line for line in log_buffer.getvalue().splitlines() if line.strip()]
 
     if dry_run:
+        _emit(
+            progress,
+            stage="done",
+            message="Apercu termine",
+            progress=100,
+        )
         return {
             "ok": True,
             "dry_run": True,
@@ -219,6 +251,7 @@ def _download(
     max_mb: float,
     workers: int,
     gallery: bool,
+    progress: ProgressCallback | None = None,
 ) -> tuple[list, list]:
     destination.mkdir(parents=True, exist_ok=True)
 
@@ -226,10 +259,41 @@ def _download(
     pool_size = min(len(filtered), min(60, max(limit * 2, limit + 6)))
     pool = filtered[:pool_size]
     print(f"Telechargement de {len(pool)} candidate(s) pour en garder {limit}...")
+    _emit(
+        progress,
+        stage="download",
+        message=f"Telechargement de {len(pool)} image(s)...",
+        progress=20,
+        done=0,
+        total=len(pool),
+    )
+
+    def report(done: int, total: int) -> None:
+        ratio = done / total if total else 1.0
+        _emit(
+            progress,
+            stage="download",
+            message=f"Telechargement {done}/{total}",
+            progress=20 + int(65 * ratio),
+            done=done,
+            total=total,
+        )
+
+    def report_extra(done: int, total: int) -> None:
+        _emit(
+            progress,
+            stage="download",
+            message=f"Complement {done}/{total}",
+            progress=85,
+            done=done,
+            total=total,
+        )
 
     staging = Path(tempfile.mkdtemp(prefix=".staging_", dir=str(destination)))
     try:
-        downloads = download_candidates(pool, staging, max_bytes, workers)
+        downloads = download_candidates(
+            pool, staging, max_bytes, workers, progress=report
+        )
         selected, _ = pick_best(downloads, limit, min_side, orientation)
 
         if len(selected) < limit and len(filtered) > len(pool):
@@ -237,17 +301,32 @@ def _download(
             if extra_count > 0:
                 extra = filtered[len(pool): len(pool) + extra_count]
                 downloads.extend(
-                    download_candidates(extra, staging, max_bytes, workers)
+                    download_candidates(
+                        extra, staging, max_bytes, workers, progress=report_extra
+                    )
                 )
                 selected, _ = pick_best(
                     downloads, limit, min_side, orientation
                 )
+
+        _emit(
+            progress,
+            stage="select",
+            message="Classement, doublons et qualite...",
+            progress=88,
+        )
 
         if not selected:
             reasons = [item.error for item in downloads if item.error]
             detail = f" ({'; '.join(reasons[:3])})" if reasons else ""
             raise RuntimeError(f"aucune image valide n'a ete telechargee{detail}")
 
+        _emit(
+            progress,
+            stage="save",
+            message="Enregistrement des images...",
+            progress=94,
+        )
         finalize_selection(selected, destination, slugify(query))
         write_manifest(destination, query, request, source, selected, downloads)
         if gallery:

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Installation portable d'Image Finder pour OpenCode (serveur MCP + skill).
+"""Installation portable d'Image Finder pour OpenCode (serveur MCP + skill + interface web).
 
 Utilisation :
   python install.py                # global : disponible dans tous les projets
   python install.py --project      # projet courant uniquement
   python install.py --check        # verifier sans rien modifier
-  python install.py --dry-run      # afficher les actions prevues
-  python install.py --skip-deps    # ne pas installer requests/Pillow
+  python install.py --dry-run      # afficher les actions sans rien modifier
+  python install.py --skip-deps    # ne pas installer les dependances
 
 Fonctionne sous Windows, macOS et Linux.
 """
@@ -221,7 +221,7 @@ def _render_skill() -> str:
 
 def _dependencies_ok() -> bool:
     result = subprocess.run(
-        [sys.executable, "-c", "import requests, PIL"],
+        [sys.executable, "-c", "import requests, PIL, flask, waitress"],
         capture_output=True,
         text=True,
     )
@@ -294,7 +294,7 @@ def run_check(config_path: Path, skills_root: Path) -> int:
         success = False
 
     if _dependencies_ok():
-        _ok("Dependances", "requests et Pillow")
+        _ok("Dependances", "requests, Pillow, Flask et Waitress")
     else:
         _missing("Dependances", "lancez : python -m pip install -r requirements.txt")
         success = False
@@ -393,6 +393,10 @@ def run_install(args: argparse.Namespace, config_path: Path, skills_root: Path) 
     print("1. Redemarrez OpenCode.")
     print("2. Demandez simplement :")
     print('   "telecharge 2 belles images de voiture de sport dans le dossier voitures"')
+    print()
+    print("Interface web v3 :")
+    print(f'   python "{BASE_DIR / "web_app.py"}"')
+    print("   Puis ouvrez http://127.0.0.1:8420/ (mot de passe si serveur en ligne).")
     print("\nVerification a tout moment : python install.py --check")
     return 0
 
@@ -426,7 +430,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--skip-deps",
         action="store_true",
-        help="ne pas installer requests/Pillow",
+        help="ne pas installer requests/Pillow/Flask/Waitress",
     )
     parser.add_argument("--config-dir", help=argparse.SUPPRESS)
     parser.add_argument("--skills-dir", help=argparse.SUPPRESS)

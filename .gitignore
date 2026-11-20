@@ -10,6 +10,11 @@ test_*/
 .staging_*/
 *.part
 
+# Configuration et cache de l'interface web v3
+web_config.json
+.webcache/
+.trash/
+
 # Divers
 *.log
 .DS_Store

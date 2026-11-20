@@ -157,7 +157,47 @@ Adapte le chemin. Verification rapide :
 python mcp_server.py --check
 ```
 
-## Sources et licences
+## Interface web (v3)
+
+Image Finder inclut une interface web autonome (Flask + Waitress) pour
+chercher, organiser, afficher et supprimer vos images depuis un navigateur,
+en local ou sur un serveur en ligne.
+
+### Lancement
+
+```bat
+python web_app.py
+```
+
+Puis ouvrez `http://127.0.0.1:8420/`.
+
+Options utiles :
+
+| Option | Description |
+|---|---|
+| `--host` | adresse d'ecoute (defaut : 127.0.0.1) |
+| `--port` | port d'ecoute (defaut : 8420) |
+| `--root` | repertoire racine de la bibliotheque |
+| `--password` | mot de passe HTTP Basic (obligatoire hors de 127.0.0.1) |
+| `--insecure` | autoriser l'acces public sans mot de passe (deconseille) |
+| `--open` | ouvrir le navigateur au demarrage |
+
+Sur un serveur en ligne :
+
+```bat
+python web_app.py --host 0.0.0.0 --port 8420 --password "votre-secret"
+```
+
+L'interface inclut :
+- une grande barre de recherche avec suggestions,
+- la creation de dossiers depuis l'interface (crees automatiquement sur disque),
+- le changement de repertoire racine,
+- une galerie avec miniatures, filtre et tri,
+- un aperçu (lightbox) avec telechargement et suppression,
+- un bouton corbeille visible au survol sur chaque image,
+- un suivi de progression des recherches en temps reel.
+
+## Utiliser avec un autre client MCP
 
 - **Yandex Images** : classement par popularite, mais peut limiter les requetes
   ou demander un captcha.
@@ -189,9 +229,18 @@ publication et installation chez l'ami.
 image_finder/
 ├── image_finder.py
 ├── download_images.py
+├── web_app.py
 ├── mcp_server.py
 ├── install.py
 ├── imagefinder/
+├── webui/
+│   ├── config.py
+│   ├── library.py
+│   ├── jobs.py
+│   ├── thumbs.py
+│   ├── server.py
+│   ├── templates/index.html
+│   └── static/app.css, app.js
 ├── skills/image-downloader/SKILL.md.template
 ├── requirements.txt
 ├── README.md

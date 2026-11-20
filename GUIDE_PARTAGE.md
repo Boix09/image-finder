@@ -211,3 +211,19 @@ dossiers de test sont ignores par `.gitignore`.
 | Yandex timeout / captcha | Le programme bascule sur Wikimedia Commons ; sinon `--source commons` |
 | Depot imbrique dans EasyShop | Ne pas `git init` dans `image_finder` ; publier la copie `D:\image-finder` |
 | L'ami a deja une config OpenCode | L'installateur fusionne l'entree `image-finder` sans supprimer le reste |
+| Interface web ne demarre pas | Verifier que Flask et Waitress sont installes : `python -m pip install -r requirements.txt` |
+| Acces serveur en ligne refuse | Lancer avec `--password "secret"` ou `--insecure` (deconseille) |
+
+## Interface web v3 (deploiement serveur)
+
+Une fois le depot clone :
+
+```bat
+cd /d C:\tools\image-finder
+python install.py
+python web_app.py --host 0.0.0.0 --port 8420 --password "mon-secret"
+```
+
+L'interface est alors accessible sur `http://<ip-du-serveur>:8420/`.
+
+---
