@@ -42,6 +42,7 @@
     selection: { paths: new Set(), mode: "browser", folderName: "" },
     inboxMode: false,
     unsplashKeyConfigured: false,
+    selectedSources: ["all", "yandex", "commons", "ddg", "openverse", "unsplash"],
   };
 
   const els = {};
@@ -71,7 +72,12 @@
     els.searchBtn = $("#searchBtn");
     els.searchFolder = $("#searchFolder");
     els.searchLimit = $("#searchLimit");
-    els.searchSource = $("#searchSource");
+    els.searchSource = $("#sourceTrigger");
+    els.sourceMulti = $("#sourceMulti");
+    els.sourceList = $("#sourceList");
+    els.sourceBadge = $("#sourceBadge");
+    els.sourceTriggerText = $("#sourceTriggerText");
+    els.sourceCheckboxes = $$("#sourceList input[type=checkbox]");
     els.searchOrientation = $("#searchOrientation");
     els.jobPanel = $("#jobPanel");
     els.jobClose = $("#jobClose");
@@ -867,7 +873,7 @@
           query,
           folder: els.searchFolder.value,
           limit: Number(els.searchLimit.value) || 10,
-          source: els.searchSource.value,
+          source: state.selectedSources,
           orientation: els.searchOrientation.value,
         },
       });
@@ -1441,6 +1447,58 @@
       }
     });
 
+    function updateSourceUI() {
+      const all = state.selectedSources.includes("all");
+      const individual = state.selectedSources.filter((s) => s !== "all");
+      const count = all ? 6 : individual.length;
+
+      els.sourceCheckboxes.forEach((cb) => {
+        if (cb.value === "all") cb.checked = all;
+        else cb.checked = individual.includes(cb.value);
+      });
+
+      els.sourceBadge.textContent = String(count);
+      els.sourceTriggerText.textContent = all ? "Toutes" : individual.join(", ") || "Aucune";
+    }
+
+    els.searchSource.addEventListener("click", () => {
+      const expanded = els.searchSource.getAttribute("aria-expanded") === "true";
+      els.searchSource.setAttribute("aria-expanded", String(!expanded));
+      els.sourceList.hidden = expanded;
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!els.sourceMulti.contains(event.target)) {
+        els.searchSource.setAttribute("aria-expanded", "false");
+        els.sourceList.hidden = true;
+      }
+    });
+
+    els.sourceCheckboxes.forEach((cb) => {
+      cb.addEventListener("change", () => {
+        if (cb.value === "all") {
+          if (cb.checked) {
+            state.selectedSources = ["all", "yandex", "commons", "ddg", "openverse", "unsplash"];
+          } else {
+            state.selectedSources = state.selectedSources.filter((s) => s !== "all");
+          }
+        } else {
+          if (cb.checked) {
+            if (!state.selectedSources.includes(cb.value)) {
+              state.selectedSources.push(cb.value);
+            }
+            if (state.selectedSources.filter((s) => s !== "all").length === 5) {
+              state.selectedSources = ["all", "yandex", "commons", "ddg", "openverse", "unsplash"];
+            }
+          } else {
+            state.selectedSources = state.selectedSources.filter((s) => s !== cb.value);
+            state.selectedSources = state.selectedSources.filter((s) => s !== "all");
+          }
+        }
+        updateSourceUI();
+      });
+    });
+
     els.selectionSelectAll.addEventListener("click", toggleSelectAll);
 
     els.selectionDownload.addEventListener("click", downloadSelection);
@@ -1721,4 +1779,5 @@
   }
 
   init();
+  updateSourceUI();
 })();

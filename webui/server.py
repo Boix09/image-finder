@@ -478,9 +478,17 @@ def create_app(
                 "une recherche est deja en cours, attendez la fin avant d'en lancer une autre"
             )
 
-        source = str(payload.get("source") or "all").strip().lower()
-        if source not in ALLOWED_SOURCES:
-            raise ApiError("source inconnue")
+        raw_source = payload.get("source") or "all"
+        if isinstance(raw_source, list):
+            sources = [str(s).strip().lower() for s in raw_source if str(s).strip()]
+        else:
+            sources = [str(raw_source).strip().lower()]
+        if not sources:
+            sources = ["all"]
+        for s in sources:
+            if s not in ALLOWED_SOURCES:
+                raise ApiError(f"source inconnue : {s}")
+        source = sources
         orientation = str(payload.get("orientation") or "any").strip().lower()
         if orientation not in ALLOWED_ORIENTATIONS:
             raise ApiError("orientation inconnue")

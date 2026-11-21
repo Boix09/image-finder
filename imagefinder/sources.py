@@ -300,17 +300,23 @@ def search_commons(query: str, limit: int) -> list[Candidate]:
     return results
 
 
-def search_images(query: str, source: str, limit: int) -> list[Candidate]:
+def search_images(query: str, source: str | list[str], limit: int) -> list[Candidate]:
+    if isinstance(source, str):
+        source_set: set[str] = {source.strip().lower()}
+    else:
+        source_set = {str(s).strip().lower() for s in source if str(s).strip()}
+    if not source_set:
+        source_set = {"all"}
     providers = []
-    if source in ("all", "yandex"):
+    if "all" in source_set or "yandex" in source_set:
         providers.append(("Yandex Images", search_yandex))
-    if source in ("all", "commons"):
+    if "all" in source_set or "commons" in source_set:
         providers.append(("Wikimedia Commons", search_commons))
-    if source in ("all", "unsplash"):
+    if "all" in source_set or "unsplash" in source_set:
         providers.append(("Unsplash", search_unsplash))
-    if source == "ddg":
+    if "ddg" in source_set:
         providers.append(("DuckDuckGo", search_duckduckgo))
-    if source == "openverse":
+    if "openverse" in source_set:
         providers.append(("Openverse", search_openverse))
 
     per_source = min(60, max(30, limit * 4))

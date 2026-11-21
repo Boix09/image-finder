@@ -119,7 +119,7 @@ def run_download(
     *,
     output: str | Path | None = None,
     limit: int = DEFAULT_LIMIT,
-    source: str = DEFAULT_SOURCE,
+    source: str | list[str] = DEFAULT_SOURCE,
     orientation: str = "any",
     min_side: int = 700,
     max_mb: float = 25.0,
