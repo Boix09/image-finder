@@ -41,6 +41,7 @@
     virtual: { rendered: 0, batchSize: 12, sentinelObserver: null },
     selection: { paths: new Set(), mode: "browser", folderName: "" },
     inboxMode: false,
+    unsplashKeyConfigured: false,
   };
 
   const els = {};
@@ -108,6 +109,9 @@
     els.selectionDestination = $("#selectionDestination");
     els.selectionFolderName = $("#selectionFolderName");
     els.inboxToggle = $("#inboxToggle");
+    els.unsplashKey = $("#unsplashKey");
+    els.unsplashKeySave = $("#unsplashKeySave");
+    els.unsplashKeyStatus = $("#unsplashKeyStatus");
     els.moveBar = $("#moveBar");
     els.moveCount = $("#moveCount");
     els.moveFolderName = $("#moveFolderName");
@@ -342,6 +346,15 @@
     if (data.inbox_mode !== undefined) {
       state.inboxMode = Boolean(data.inbox_mode);
       if (els.inboxToggle) els.inboxToggle.checked = state.inboxMode;
+    }
+
+    if (data.unsplash_key_configured !== undefined) {
+      state.unsplashKeyConfigured = Boolean(data.unsplash_key_configured);
+      if (els.unsplashKeyStatus) {
+        els.unsplashKeyStatus.textContent = state.unsplashKeyConfigured
+          ? "Cle Unsplash configuree"
+          : "Cle Unsplash non configuree";
+      }
     }
 
     if (data.pagination) {
@@ -1369,6 +1382,31 @@
         showToast(error.message, "error", 6000);
         els.inboxToggle.checked = !state.inboxMode;
         state.inboxMode = els.inboxToggle.checked;
+      }
+    });
+
+    els.unsplashKeySave.addEventListener("click", async () => {
+      const key = (els.unsplashKey.value || "").trim();
+      try {
+        const data = await api("/api/config/unsplash", {
+          method: "POST",
+          body: { unsplash_access_key: key },
+        });
+        state.unsplashKeyConfigured = Boolean(data.configured);
+        if (els.unsplashKeyStatus) {
+          els.unsplashKeyStatus.textContent = state.unsplashKeyConfigured
+            ? "Cle Unsplash enregistree"
+            : "Cle Unsplash supprimee";
+        }
+        showToast(
+          state.unsplashKeyConfigured
+            ? "Cle Unsplash enregistree (source Unsplash disponible)"
+            : "Cle Unsplash supprimee",
+          "info",
+          4000
+        );
+      } catch (error) {
+        showToast(error.message, "error", 6000);
       }
     });
 

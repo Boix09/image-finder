@@ -15,6 +15,7 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8420
 DEFAULT_INBOX_MODE = False
 DEFAULT_INBOX_FOLDER = "inbox"
+DEFAULT_UNSPLASH_ACCESS_KEY = ""
 
 
 def default_config_path() -> Path:
@@ -38,6 +39,7 @@ class WebConfig:
         self._root = DEFAULT_ROOT
         self._inbox_mode = DEFAULT_INBOX_MODE
         self._inbox_folder = DEFAULT_INBOX_FOLDER
+        self._unsplash_access_key = DEFAULT_UNSPLASH_ACCESS_KEY
         self.load()
 
         env_root = os.environ.get("IMAGE_FINDER_WEB_ROOT")
@@ -65,6 +67,10 @@ class WebConfig:
         return self._inbox_folder
 
     @property
+    def unsplash_access_key(self) -> str:
+        return self._unsplash_access_key
+
+    @property
     def inbox_root(self) -> Path:
         return self._root / self._inbox_folder
 
@@ -87,6 +93,10 @@ class WebConfig:
         raw_inbox_folder = data.get("inbox_folder")
         if isinstance(raw_inbox_folder, str) and raw_inbox_folder.strip():
             self._inbox_folder = raw_inbox_folder.strip()
+        raw_unsplash_key = data.get("unsplash_access_key")
+        if isinstance(raw_unsplash_key, str) and raw_unsplash_key.strip():
+            self._unsplash_access_key = raw_unsplash_key.strip()
+            os.environ["UNSPLASH_ACCESS_KEY"] = self._unsplash_access_key
 
     def _normalize(self, value: str | Path) -> Path:
         text = os.path.expandvars(str(value)).strip()
@@ -129,6 +139,7 @@ class WebConfig:
             "root": str(self._root),
             "inbox_mode": self._inbox_mode,
             "inbox_folder": self._inbox_folder,
+            "unsplash_access_key": self._unsplash_access_key,
         }
         descriptor, temporary = tempfile.mkstemp(
             prefix=".web_config-", suffix=".tmp", dir=str(self.path.parent)
@@ -168,5 +179,14 @@ class WebConfig:
         name = str(name).strip() or DEFAULT_INBOX_FOLDER
         self._inbox_folder = name
         self.ensure_inbox()
+        if persist:
+            self.save()
+
+    def set_unsplash_access_key(self, key: str, *, persist: bool = True) -> None:
+        self._unsplash_access_key = str(key or "").strip()
+        if self._unsplash_access_key:
+            os.environ["UNSPLASH_ACCESS_KEY"] = self._unsplash_access_key
+        elif "UNSPLASH_ACCESS_KEY" in os.environ:
+            del os.environ["UNSPLASH_ACCESS_KEY"]
         if persist:
             self.save()

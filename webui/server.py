@@ -85,6 +85,7 @@ def create_app(
             "password_protected": bool(app.config["IMAGE_FINDER_PASSWORD"]),
             "inbox_mode": library.config.inbox_mode,
             "inbox_folder": library.config.inbox_folder,
+            "unsplash_key_configured": bool(library.config.unsplash_access_key),
         }
 
     def json_payload() -> dict:
@@ -401,6 +402,23 @@ def create_app(
             ok=True,
             inbox_mode=library.config.inbox_mode,
             inbox_folder=library.config.inbox_folder,
+        )
+
+    @app.get("/api/config/unsplash")
+    def api_config_unsplash_get():
+        return jsonify(
+            ok=True,
+            configured=bool(library.config.unsplash_access_key),
+        )
+
+    @app.post("/api/config/unsplash")
+    def api_config_unsplash():
+        payload = json_payload()
+        key = payload.get("unsplash_access_key") or ""
+        library.config.set_unsplash_access_key(key)
+        return jsonify(
+            ok=True,
+            configured=bool(library.config.unsplash_access_key),
         )
 
     @app.post("/api/root")
