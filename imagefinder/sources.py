@@ -315,6 +315,7 @@ def search_images(query: str, source: str, limit: int) -> list[Candidate]:
 
     per_source = min(60, max(30, limit * 4))
     collected: list[Candidate] = []
+    errors: dict[str, str] = {}
     print(f"Interrogation de {len(providers)} source(s)...")
 
     with ThreadPoolExecutor(max_workers=len(providers)) as executor:
@@ -329,6 +330,7 @@ def search_images(query: str, source: str, limit: int) -> list[Candidate]:
                 print(f"  {name}: {len(results)} resultat(s)")
                 collected.extend(results)
             except Exception as exc:
+                errors[name] = str(exc)
                 print(f"  {name}: erreur ({exc})", file=sys.stderr)
 
     seen: set[str] = set()
@@ -345,6 +347,13 @@ def search_images(query: str, source: str, limit: int) -> list[Candidate]:
 
     unique.sort(key=lambda candidate: candidate.meta_score, reverse=True)
     print(f"  Total: {len(unique)} candidate(s) unique(s)")
+
+    if not unique and errors:
+        detail = "; ".join(f"{n}: {e}" for n, e in errors.items())
+        raise RuntimeError(
+            "aucune image trouvee. Erreurs par source : " + detail
+        )
+
     return unique
 
 
