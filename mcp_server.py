@@ -26,7 +26,7 @@ from imagefinder.service import (  # noqa: E402
 )
 
 SERVER_NAME = "image-finder"
-SERVER_VERSION = "3.0.0"
+SERVER_VERSION = "3.2.0"
 DEFAULT_PROTOCOL = "2024-11-05"
 
 INSTRUCTIONS = (
