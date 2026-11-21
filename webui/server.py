@@ -366,6 +366,30 @@ def create_app(
             manifest=result["manifest"],
         )
 
+    @app.post("/api/delete-selection")
+    def api_delete_selection():
+        if jobs.active():
+            raise JobConflict(
+                "attendez la fin de la recherche avant de supprimer une selection"
+            )
+        payload = json_payload()
+        paths = payload.get("paths") or []
+
+        if not isinstance(paths, list) or not paths:
+            raise ApiError("aucune image selectionnee")
+
+        try:
+            result = library.delete_selection(paths)
+        except LibraryError as exc:
+            raise ApiError(str(exc)) from exc
+        return jsonify(
+            ok=True,
+            destination="delete",
+            deleted=result["deleted"],
+            freed=result["freed"],
+            errors=result["errors"],
+        )
+
     @app.post("/api/config/inbox")
     def api_config_inbox():
         payload = json_payload()

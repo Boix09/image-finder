@@ -602,3 +602,39 @@ class Library:
             "files": moved,
             "manifest": str(manifest_path),
         }
+
+    def delete_selection(self, relative_paths: list[str]) -> dict:
+        """Supprime plusieurs images d'un coup.
+
+        Retourne le nombre supprime et l'espace libere.
+        """
+        if not relative_paths:
+            raise LibraryError("aucune image selectionnee")
+
+        deleted = 0
+        freed = 0
+        errors: list[str] = []
+
+        for relative in relative_paths:
+            try:
+                path = self.image_path(relative)
+                if not path.is_file():
+                    continue
+                try:
+                    freed += path.stat().st_size
+                except OSError:
+                    pass
+                path.unlink()
+                self._drop_manifest_entry(path.parent, path.name)
+                with self._dimension_lock:
+                    self._dimensions.pop(str(path), None)
+                deleted += 1
+            except Exception as exc:
+                errors.append(f"{relative}: {exc}")
+
+        self._invalidate()
+        return {
+            "deleted": deleted,
+            "freed": freed,
+            "errors": errors,
+        }

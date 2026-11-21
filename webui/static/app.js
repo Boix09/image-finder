@@ -104,6 +104,7 @@
     els.selectionCount = $("#selectionCount");
     els.selectionSelectAll = $("#selectionSelectAll");
     els.selectionDownload = $("#selectionDownload");
+    els.selectionDelete = $("#selectionDelete");
     els.selectionDestination = $("#selectionDestination");
     els.selectionFolderName = $("#selectionFolderName");
     els.inboxToggle = $("#inboxToggle");
@@ -771,6 +772,37 @@
     }
   }
 
+  async function deleteSelection() {
+    const paths = Array.from(state.selection.paths);
+    if (!paths.length) return;
+
+    if (
+      !window.confirm(
+        `Supprimer définitivement ${paths.length} image(s) ? Cette action est irréversible.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const data = await api("/api/delete-selection", {
+        method: "POST",
+        body: { paths },
+      });
+
+      showToast(
+        `${data.deleted} image(s) supprimée(s) (${formatBytes(data.freed)} libérés).`,
+        "success",
+        5000
+      );
+      state.selection.paths.clear();
+      updateSelectionBar();
+      await loadState();
+    } catch (error) {
+      showToast(error.message, "error", 6000);
+    }
+  }
+
   function showEmptyState(title, text, actionLabel, mode) {
     state.emptyMode = mode;
     els.emptyTitle.textContent = title;
@@ -1343,6 +1375,8 @@
     els.selectionSelectAll.addEventListener("click", toggleSelectAll);
 
     els.selectionDownload.addEventListener("click", downloadSelection);
+
+    els.selectionDelete.addEventListener("click", deleteSelection);
 
     els.selectionDestination.addEventListener("change", () => {
       state.selection.mode = els.selectionDestination.value;
