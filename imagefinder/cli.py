@@ -30,6 +30,7 @@ SOURCE_LABELS = {
     "commons": "Wikimedia Commons",
     "ddg": "DuckDuckGo (experimental)",
     "openverse": "Openverse (jeton requis)",
+    "unsplash": "Unsplash (cle API requise)",
 }
 
 
@@ -54,7 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-n", "--limit", type=int, default=10, help="nombre d'images a garder (defaut : 10, max : 60)")
     parser.add_argument(
         "-s", "--source",
-        choices=["all", "yandex", "commons", "ddg", "openverse"], default="all",
+        choices=["all", "yandex", "commons", "ddg", "openverse", "unsplash"], default="all",
         help="source(s) d'images (defaut : all = Yandex + Commons)",
     )
     parser.add_argument("-j", "--workers", type=int, default=6, help="telechargements simultanes (defaut : 6)")

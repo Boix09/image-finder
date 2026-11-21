@@ -402,8 +402,10 @@ def search_unsplash(query: str, limit: int) -> list[Candidate]:
             continue
         user = item.get("user") or {}
         creator = str(user.get("name") or "")
-        user_link = str(user.get("links") or {}).get("html") or ""
-        source_page = str(item.get("links") or {}).get("html") or ""
+        user_links = user.get("links") or {}
+        user_link = str(user_links.get("html") or "")
+        item_links = item.get("links") or {}
+        source_page = str(item_links.get("html") or "")
         description = str(item.get("alt_description") or item.get("description") or "")
         results.append(
             Candidate(
