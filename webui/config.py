@@ -13,6 +13,8 @@ CONFIG_FILENAME = "web_config.json"
 DEFAULT_ROOT = TOOL_ROOT / "images"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8420
+DEFAULT_INBOX_MODE = False
+DEFAULT_INBOX_FOLDER = "inbox"
 
 
 def default_config_path() -> Path:
@@ -29,9 +31,13 @@ class WebConfig:
         self,
         path: str | Path | None = None,
         root: str | Path | None = None,
+        inbox_mode: bool | None = None,
+        inbox_folder: str | None = None,
     ) -> None:
         self.path = Path(path).expanduser() if path else default_config_path()
         self._root = DEFAULT_ROOT
+        self._inbox_mode = DEFAULT_INBOX_MODE
+        self._inbox_folder = DEFAULT_INBOX_FOLDER
         self.load()
 
         env_root = os.environ.get("IMAGE_FINDER_WEB_ROOT")
@@ -39,11 +45,28 @@ class WebConfig:
             self.set_root(env_root, persist=False)
         if root:
             self.set_root(root, persist=False)
+        if inbox_mode is not None:
+            self._inbox_mode = bool(inbox_mode)
+        if inbox_folder:
+            self._inbox_folder = str(inbox_folder).strip() or DEFAULT_INBOX_FOLDER
         self.ensure_root()
+        self.ensure_inbox()
 
     @property
     def root(self) -> Path:
         return self._root
+
+    @property
+    def inbox_mode(self) -> bool:
+        return self._inbox_mode
+
+    @property
+    def inbox_folder(self) -> str:
+        return self._inbox_folder
+
+    @property
+    def inbox_root(self) -> Path:
+        return self._root / self._inbox_folder
 
     def load(self) -> None:
         try:
@@ -58,6 +81,12 @@ class WebConfig:
                 self._root = self._normalize(raw)
             except (OSError, ValueError):
                 pass
+        raw_inbox = data.get("inbox_mode")
+        if isinstance(raw_inbox, bool):
+            self._inbox_mode = raw_inbox
+        raw_inbox_folder = data.get("inbox_folder")
+        if isinstance(raw_inbox_folder, str) and raw_inbox_folder.strip():
+            self._inbox_folder = raw_inbox_folder.strip()
 
     def _normalize(self, value: str | Path) -> Path:
         text = os.path.expandvars(str(value)).strip()
@@ -95,7 +124,12 @@ class WebConfig:
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {"version": 3, "root": str(self._root)}
+        payload = {
+            "version": 3,
+            "root": str(self._root),
+            "inbox_mode": self._inbox_mode,
+            "inbox_folder": self._inbox_folder,
+        }
         descriptor, temporary = tempfile.mkstemp(
             prefix=".web_config-", suffix=".tmp", dir=str(self.path.parent)
         )
@@ -116,3 +150,23 @@ class WebConfig:
         except OSError:
             self._root = DEFAULT_ROOT
             self._root.mkdir(parents=True, exist_ok=True)
+
+    def ensure_inbox(self) -> None:
+        if self._inbox_mode:
+            try:
+                self.inbox_root.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                pass
+
+    def set_inbox_mode(self, enabled: bool, *, persist: bool = True) -> None:
+        self._inbox_mode = bool(enabled)
+        self.ensure_inbox()
+        if persist:
+            self.save()
+
+    def set_inbox_folder(self, name: str, *, persist: bool = True) -> None:
+        name = str(name).strip() or DEFAULT_INBOX_FOLDER
+        self._inbox_folder = name
+        self.ensure_inbox()
+        if persist:
+            self.save()

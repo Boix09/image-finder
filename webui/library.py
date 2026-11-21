@@ -519,3 +519,86 @@ class Library:
             "files": copied,
             "manifest": str(manifest_path),
         }
+
+    def move_selection_to_folder(
+        self, relative_paths: list[str], folder_name: str
+    ) -> dict:
+        """Deplace une selection d'images depuis l'inbox vers un dossier definitif.
+
+        Le dossier cible est cree sous la racine avec un nom moderne (slug).
+        Les fichiers sont deplaces (pas copies) et le manifest est mis a jour.
+        """
+        if not relative_paths:
+            raise LibraryError("aucune image selectionnee")
+
+        target_name = self.validate_folder_name(folder_name)
+        target_dir = self.root / target_name
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        moved: list[str] = []
+        manifest_images: list[dict] = []
+
+        for relative in relative_paths:
+            src = self.image_path(relative)
+            if not src.is_file():
+                continue
+            dest = unique_path(target_dir, src.name)
+            shutil.move(str(src), str(dest))
+            moved.append(self.relative(dest))
+
+            # Lecture du manifest source pour recuperer les metadatas
+            src_manifest = src.parent / "manifest.json"
+            meta: dict = {}
+            if src_manifest.is_file():
+                try:
+                    payload = json.loads(src_manifest.read_text(encoding="utf-8"))
+                    images = payload.get("images") if isinstance(payload, dict) else None
+                    if isinstance(images, list):
+                        for item in images:
+                            if isinstance(item, dict) and str(item.get("file")) == src.name:
+                                meta = item
+                                break
+                except (OSError, ValueError):
+                    meta = {}
+
+            manifest_images.append(
+                {
+                    "file": dest.name,
+                    "source_file": src.name,
+                    "source_path": relative,
+                    "width": meta.get("width"),
+                    "height": meta.get("height"),
+                    "title": meta.get("title") or src.stem,
+                    "provider": meta.get("provider") or "",
+                    "source_url": meta.get("page_url") or "",
+                    "license": meta.get("license") or "",
+                    "creator": meta.get("creator") or "",
+                    "score": meta.get("score"),
+                    "moved_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+
+        # Ecriture du manifest du dossier cible
+        manifest_path = target_dir / "manifest.json"
+        payload = {
+            "folder": target_name,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "source": "inbox",
+            "count": len(moved),
+            "images": manifest_images,
+        }
+        try:
+            manifest_path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        except OSError:
+            pass
+
+        self._invalidate()
+        return {
+            "folder": target_name,
+            "path": self.relative(target_dir),
+            "moved": len(moved),
+            "files": moved,
+            "manifest": str(manifest_path),
+        }

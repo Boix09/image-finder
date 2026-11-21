@@ -40,6 +40,7 @@
     cache: { count: 0, bytes: 0 },
     virtual: { rendered: 0, batchSize: 12, sentinelObserver: null },
     selection: { paths: new Set(), mode: "browser", folderName: "" },
+    inboxMode: false,
   };
 
   const els = {};
@@ -105,6 +106,11 @@
     els.selectionDownload = $("#selectionDownload");
     els.selectionDestination = $("#selectionDestination");
     els.selectionFolderName = $("#selectionFolderName");
+    els.inboxToggle = $("#inboxToggle");
+    els.moveBar = $("#moveBar");
+    els.moveCount = $("#moveCount");
+    els.moveFolderName = $("#moveFolderName");
+    els.moveDownload = $("#moveDownload");
     els.folderDialog = $("#folderDialog");
     els.folderForm = $("#folderForm");
     els.folderName = $("#folderName");
@@ -330,6 +336,11 @@
         count: Number(data.cache.count || 0),
         bytes: Number(data.cache.bytes || 0),
       };
+    }
+
+    if (data.inbox_mode !== undefined) {
+      state.inboxMode = Boolean(data.inbox_mode);
+      if (els.inboxToggle) els.inboxToggle.checked = state.inboxMode;
     }
 
     if (data.pagination) {
@@ -689,6 +700,17 @@
       els.selectionSelectAll.textContent = count === state.rendered.length ? "Tout désélectionner" : "Tout sélectionner";
     } else {
       els.selectionBar.hidden = true;
+    }
+    updateMoveBar();
+  }
+
+  function updateMoveBar() {
+    const count = state.selection.paths.size;
+    if (state.inboxMode && count > 0) {
+      els.moveBar.hidden = false;
+      els.moveCount.textContent = plural(count, "image", "images");
+    } else {
+      els.moveBar.hidden = true;
     }
   }
 
@@ -1295,6 +1317,29 @@
       }
     });
 
+    els.inboxToggle.addEventListener("change", async () => {
+      state.inboxMode = els.inboxToggle.checked;
+      try {
+        const data = await api("/api/config/inbox", {
+          method: "POST",
+          body: { inbox_mode: state.inboxMode },
+        });
+        state.inboxMode = Boolean(data.inbox_mode);
+        els.inboxToggle.checked = state.inboxMode;
+        showToast(
+          state.inboxMode
+            ? "Mode Inbox active : les recherches iront dans le dossier inbox/"
+            : "Mode Inbox desactive : les recherches iront directement dans les dossiers",
+          "info",
+          4000
+        );
+      } catch (error) {
+        showToast(error.message, "error", 6000);
+        els.inboxToggle.checked = !state.inboxMode;
+        state.inboxMode = els.inboxToggle.checked;
+      }
+    });
+
     els.selectionSelectAll.addEventListener("click", toggleSelectAll);
 
     els.selectionDownload.addEventListener("click", downloadSelection);
@@ -1311,6 +1356,33 @@
 
     els.selectionFolderName.addEventListener("input", () => {
       state.selection.folderName = els.selectionFolderName.value;
+    });
+
+    els.moveDownload.addEventListener("click", async () => {
+      const paths = Array.from(state.selection.paths);
+      if (!paths.length) return;
+      const folderName = els.moveFolderName.value.trim();
+      if (!folderName) {
+        showToast("indiquez un nom de dossier de destination", "error", 4000);
+        return;
+      }
+      try {
+        const data = await api("/api/move-selection", {
+          method: "POST",
+          body: { paths, folder_name: folderName },
+        });
+        showToast(
+          `${data.moved} image(s) deplacee(s) vers « ${data.folder} »`,
+          "success",
+          5000
+        );
+        state.selection.paths.clear();
+        updateSelectionBar();
+        updateMoveBar();
+        await loadState();
+      } catch (error) {
+        showToast(error.message, "error", 6000);
+      }
     });
 
     els.emptyAction.addEventListener("click", () => {

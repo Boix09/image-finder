@@ -25,6 +25,8 @@ class Job:
     source: str
     orientation: str
     min_side: int
+    inbox_mode: bool = False
+    inbox_folder: str = "inbox"
     status: str = "queued"
     stage: str = "queued"
     message: str = "En attente..."
@@ -178,6 +180,8 @@ class JobManager:
                 workers=6,
                 gallery=True,
                 progress=report,
+                inbox_mode=self._job_field(job_id, "inbox_mode"),
+                inbox_folder=self._job_field(job_id, "inbox_folder"),
             )
             with self._lock:
                 job = self._jobs.get(job_id)

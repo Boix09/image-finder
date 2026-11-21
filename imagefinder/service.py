@@ -58,6 +58,8 @@ def _clamp(value: int, minimum: int, maximum: int) -> int:
 def resolve_destination(
     request: str,
     output: str | Path | None = None,
+    inbox_mode: bool = False,
+    inbox_folder: str = "inbox",
 ) -> tuple[str, Path, str | None]:
     """Nettoie la demande et determine le dossier de destination."""
     text, folder = split_folder(request)
@@ -71,6 +73,8 @@ def resolve_destination(
     elif folder:
         candidate = Path(folder).expanduser()
         destination = candidate if candidate.is_absolute() else base / safe_dirname(folder)
+    elif inbox_mode:
+        destination = base / inbox_folder / slugify(query)
     else:
         destination = base / "images" / slugify(query)
 
@@ -123,6 +127,8 @@ def run_download(
     gallery: bool = True,
     dry_run: bool = False,
     progress: ProgressCallback | None = None,
+    inbox_mode: bool = False,
+    inbox_folder: str = "inbox",
 ) -> dict:
     """Cherche des images et telecharge les meilleures.
 
@@ -149,7 +155,9 @@ def run_download(
     if max_mb <= 0:
         max_mb = 25.0
 
-    query, destination, folder = resolve_destination(request, output)
+    query, destination, folder = resolve_destination(
+        request, output, inbox_mode=inbox_mode, inbox_folder=inbox_folder
+    )
 
     if destination.exists() and not destination.is_dir():
         raise RuntimeError(f"{destination} existe mais n'est pas un dossier")

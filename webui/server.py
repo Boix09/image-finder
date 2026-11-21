@@ -83,6 +83,8 @@ def create_app(
             "csrf": csrf_token,
             "active_job": jobs.active(),
             "password_protected": bool(app.config["IMAGE_FINDER_PASSWORD"]),
+            "inbox_mode": library.config.inbox_mode,
+            "inbox_folder": library.config.inbox_folder,
         }
 
     def json_payload() -> dict:
@@ -333,6 +335,50 @@ def create_app(
         else:
             raise ApiError(f"destination invalide : {destination}")
 
+    @app.post("/api/move-selection")
+    def api_move_selection():
+        if jobs.active():
+            raise JobConflict(
+                "attendez la fin de la recherche avant de deplacer une selection"
+            )
+        if not library.config.inbox_mode:
+            raise ApiError("le mode inbox n'est pas active")
+        payload = json_payload()
+        paths = payload.get("paths") or []
+        folder_name = payload.get("folder_name") or ""
+
+        if not isinstance(paths, list) or not paths:
+            raise ApiError("aucune image selectionnee")
+        if not folder_name.strip():
+            raise ApiError("indiquez un nom de dossier de destination")
+
+        try:
+            result = library.move_selection_to_folder(paths, folder_name)
+        except LibraryError as exc:
+            raise ApiError(str(exc)) from exc
+        return jsonify(
+            ok=True,
+            destination="folder",
+            folder=result["folder"],
+            path=result["path"],
+            moved=result["moved"],
+            files=result["files"],
+            manifest=result["manifest"],
+        )
+
+    @app.post("/api/config/inbox")
+    def api_config_inbox():
+        payload = json_payload()
+        inbox_mode = payload.get("inbox_mode")
+        if not isinstance(inbox_mode, bool):
+            raise ApiError("parametre inbox_mode requis (true/false)")
+        library.config.set_inbox_mode(inbox_mode)
+        return jsonify(
+            ok=True,
+            inbox_mode=library.config.inbox_mode,
+            inbox_folder=library.config.inbox_folder,
+        )
+
     @app.post("/api/root")
     def api_root():
         if jobs.active():
@@ -409,9 +455,16 @@ def create_app(
         requested_folder = str(payload.get("folder") or "").strip()
         folder = requested_folder or detected or slugify(cleaned)
         folder = library.validate_folder_name(folder)
-        library.ensure_folder(folder)
 
-        output_dir = str(library.root / folder)
+        inbox_mode = bool(library.config.inbox_mode)
+        inbox_folder = library.config.inbox_folder
+
+        if inbox_mode:
+            output_dir = str(library.root / inbox_folder / slugify(cleaned))
+        else:
+            library.ensure_folder(folder)
+            output_dir = str(library.root / folder)
+
         job = jobs.submit(
             request=query,
             folder=folder,
@@ -420,6 +473,8 @@ def create_app(
             source=source,
             orientation=orientation,
             min_side=min_side,
+            inbox_mode=inbox_mode,
+            inbox_folder=inbox_folder,
         )
         return jsonify(ok=True, job=job), 202
 
