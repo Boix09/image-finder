@@ -24,7 +24,7 @@ from .textutil import clean_query, matches_orientation, split_folder
 DEFAULT_LIMIT = 10
 MAX_LIMIT = 60
 DEFAULT_SOURCE = "all"
-ALLOWED_SOURCES = ("all", "yandex", "commons", "ddg", "openverse")
+ALLOWED_SOURCES = ("all", "yandex", "commons", "ddg", "openverse", "unsplash")
 ALLOWED_ORIENTATIONS = ("any", "landscape", "portrait", "square")
 
 # Tout reste dans le dossier du programme (voir TOOL_ROOT).

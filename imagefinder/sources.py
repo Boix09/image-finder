@@ -306,6 +306,8 @@ def search_images(query: str, source: str, limit: int) -> list[Candidate]:
         providers.append(("Yandex Images", search_yandex))
     if source in ("all", "commons"):
         providers.append(("Wikimedia Commons", search_commons))
+    if source in ("all", "unsplash"):
+        providers.append(("Unsplash", search_unsplash))
     if source == "ddg":
         providers.append(("DuckDuckGo", search_duckduckgo))
     if source == "openverse":
@@ -344,3 +346,80 @@ def search_images(query: str, source: str, limit: int) -> list[Candidate]:
     unique.sort(key=lambda candidate: candidate.meta_score, reverse=True)
     print(f"  Total: {len(unique)} candidate(s) unique(s)")
     return unique
+
+
+def search_unsplash(query: str, limit: int) -> list[Candidate]:
+    """Recherche des images sur Unsplash via l'API publique.
+
+    Requiert la variable d'environnement UNSPLASH_ACCESS_KEY.
+    Respecte les règles d'attribution Unsplash (photographe + lien Unsplash).
+    """
+    access_key = os.environ.get("UNSPLASH_ACCESS_KEY")
+    if not access_key:
+        raise RuntimeError(
+            "source Unsplash ignoree : definissez UNSPLASH_ACCESS_KEY "
+            "(variable d'environnement) pour utiliser cette source"
+        )
+
+    headers = {
+        "Authorization": f"Client-ID {access_key}",
+        "Accept-Version": "v1",
+        "User-Agent": USER_AGENT,
+    }
+    params = {
+        "query": query,
+        "per_page": min(limit, 30),
+        "page": 1,
+        "order_by": "relevant",
+    }
+    response = requests.get(
+        "https://api.unsplash.com/search/photos",
+        params=params,
+        headers=headers,
+        timeout=TIMEOUT,
+    )
+    if response.status_code == 401 or response.status_code == 403:
+        raise RuntimeError(
+            "acces refuse par Unsplash (cle UNSPLASH_ACCESS_KEY invalide ou manquante)"
+        )
+    if response.status_code == 429:
+        raise RuntimeError("limite de requetes Unsplash atteinte, reessayez plus tard")
+    response.raise_for_status()
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise RuntimeError("reponse JSON invalide d'Unsplash") from exc
+
+    results: list[Candidate] = []
+    for index, item in enumerate(payload.get("results") or []):
+        if len(results) >= limit:
+            break
+        urls = item.get("urls") or {}
+        image_url = normalize_image_url(
+            str(urls.get("full") or urls.get("regular") or urls.get("raw") or "")
+        )
+        if not image_url:
+            continue
+        user = item.get("user") or {}
+        creator = str(user.get("name") or "")
+        user_link = str(user.get("links") or {}).get("html") or ""
+        source_page = str(item.get("links") or {}).get("html") or ""
+        description = str(item.get("alt_description") or item.get("description") or "")
+        results.append(
+            Candidate(
+                image_url=image_url,
+                title=strip_html(description) or "Sans titre",
+                provider="Unsplash",
+                source_page=source_page,
+                width=to_int(item.get("width")),
+                height=to_int(item.get("height")),
+                rank=index + 1,
+                license="unsplash",
+                license_url="https://unsplash.com/license",
+                creator=creator,
+                thumbnail=normalize_image_url(
+                    str(urls.get("thumb") or urls.get("small") or "")
+                ),
+            )
+        )
+    return results
