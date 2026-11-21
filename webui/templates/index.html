@@ -278,6 +278,27 @@
             </button>
           </div>
 
+          <div class="selection-bar" id="selectionBar" hidden>
+            <div class="selection-info">
+              <span id="selectionCount">0 image</span> sélectionnée
+            </div>
+            <div class="selection-actions">
+              <button class="btn btn-ghost" id="selectionSelectAll" type="button">Tout sélectionner</button>
+              <label class="destination-label">
+                <span>Destination :</span>
+                <select id="selectionDestination">
+                  <option value="browser">Navigateur</option>
+                  <option value="folder">Sous-dossier du projet</option>
+                </select>
+              </label>
+              <input type="text" id="selectionFolderName" placeholder="Nom du dossier (optionnel)" disabled>
+              <button class="btn btn-primary" id="selectionDownload" type="button">
+                <svg class="icon"><use href="#icon-download"/></svg>
+                <span>Télécharger la sélection</span>
+              </button>
+            </div>
+          </div>
+
           <div class="gallery skeleton-grid" id="galleryLoading" hidden></div>
           <div class="gallery" id="gallery"></div>
 

@@ -290,6 +290,47 @@ def create_app(
     def api_download():
         return _image_response(request.args.get("path") or "", attachment=True)
 
+    @app.post("/api/download-selection")
+    def api_download_selection():
+        if jobs.active():
+            raise JobConflict(
+                "attendez la fin de la recherche avant de telecharger une selection"
+            )
+        payload = json_payload()
+        paths = payload.get("paths") or []
+        destination = payload.get("destination") or "browser"
+        folder_name = payload.get("folder_name") or None
+
+        if not isinstance(paths, list) or not paths:
+            raise ApiError("aucune image selectionnee")
+
+        if destination == "folder":
+            try:
+                result = library.copy_selection_to_folder(paths, folder_name)
+            except LibraryError as exc:
+                raise ApiError(str(exc)) from exc
+            return jsonify(
+                ok=True,
+                destination="folder",
+                subfolder=result["subfolder"],
+                path=result["path"],
+                copied=result["copied"],
+                files=result["files"],
+                manifest=result["manifest"],
+            )
+        elif destination == "browser":
+            return jsonify(
+                ok=True,
+                destination="browser",
+                count=len(paths),
+                urls=[
+                    f"/api/download?path={__import__('urllib.parse').quote(p)}"
+                    for p in paths
+                ],
+            )
+        else:
+            raise ApiError(f"destination invalide : {destination}")
+
     @app.post("/api/root")
     def api_root():
         if jobs.active():

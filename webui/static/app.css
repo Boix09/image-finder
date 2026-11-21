@@ -1716,6 +1716,124 @@ img {
 }
 
 /* ------------------------------------------------------------
+   Selection multiple (checkboxes + barre d'action)
+   ------------------------------------------------------------ */
+
+.card-checkbox-wrap {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: color-mix(in srgb, var(--surface-solid) 85%, transparent);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.card-checkbox-wrap:hover {
+  border-color: var(--accent);
+  background: var(--surface-solid);
+}
+
+.card-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.card-checkbox-wrap:hover .card-checkbox,
+.card-checkbox:checked {
+  opacity: 1;
+}
+
+.check-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+}
+
+.card-checkbox:checked + .check-icon {
+  color: var(--accent);
+}
+
+.card.has-selection .card-checkbox-wrap {
+  border-color: var(--accent);
+  background: var(--surface-solid);
+}
+
+/* Barre d'action de selection */
+.selection-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 20px;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 18px;
+  animation: zoom-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  flex-wrap: wrap;
+}
+
+.selection-info {
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.selection-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.destination-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--text-soft);
+}
+
+.destination-label select {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.selection-bar input[type="text"] {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.75rem;
+  min-width: 180px;
+}
+
+.selection-bar input[type="text"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------
    Skeleton cards
    ------------------------------------------------------------ */
 

@@ -9,7 +9,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-from imagefinder.fileutil import IMAGE_EXTENSIONS
+from imagefinder.fileutil import IMAGE_EXTENSIONS, slugify, unique_path
 from imagefinder.quality import PIL_AVAILABLE
 
 EXCLUDED_DIRS = {
@@ -432,3 +432,90 @@ class Library:
         shutil.rmtree(path)
         self._invalidate()
         return {"images": count, "freed": total, "path": self.relative(path)}
+
+    def copy_selection_to_folder(
+        self, relative_paths: list[str], folder_name: str | None = None
+    ) -> dict:
+        """Copie une selection d'images vers un sous-dossier avec nom moderne.
+
+        Nom par défaut : selection-<slug>-<date-heure>
+        ex: selection-gta-2026-11-21-14h30
+        """
+        from imagefinder.textutil import clean_query
+
+        if not relative_paths:
+            raise LibraryError("aucune image selectionnee")
+
+        slug = slugify(folder_name or "selection")
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d-%Hh%M")
+        subfolder_name = f"selection-{slug}-{timestamp}" if not folder_name else slug
+        target_dir = self.root / subfolder_name
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        copied: list[str] = []
+        manifest_images: list[dict] = []
+
+        for relative in relative_paths:
+            src = self.image_path(relative)
+            if not src.is_file():
+                continue
+            dest = unique_path(target_dir, src.name)
+            shutil.copy2(str(src), str(dest))
+            copied.append(self.relative(dest))
+
+            # Lecture du manifest source pour recuperer les metadatas
+            src_manifest = src.parent / "manifest.json"
+            meta: dict = {}
+            if src_manifest.is_file():
+                try:
+                    payload = json.loads(src_manifest.read_text(encoding="utf-8"))
+                    images = payload.get("images") if isinstance(payload, dict) else None
+                    if isinstance(images, list):
+                        for item in images:
+                            if isinstance(item, dict) and str(item.get("file")) == src.name:
+                                meta = item
+                                break
+                except (OSError, ValueError):
+                    meta = {}
+
+            manifest_images.append(
+                {
+                    "file": dest.name,
+                    "source_file": src.name,
+                    "source_path": relative,
+                    "width": meta.get("width"),
+                    "height": meta.get("height"),
+                    "title": meta.get("title") or src.stem,
+                    "provider": meta.get("provider") or "",
+                    "source_url": meta.get("page_url") or "",
+                    "license": meta.get("license") or "",
+                    "creator": meta.get("creator") or "",
+                    "score": meta.get("score"),
+                    "copied_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+
+        # Ecriture du manifest du sous-dossier
+        manifest_path = target_dir / "manifest.json"
+        payload = {
+            "folder": subfolder_name,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "source": "selection",
+            "count": len(copied),
+            "images": manifest_images,
+        }
+        try:
+            manifest_path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        except OSError:
+            pass
+
+        self._invalidate()
+        return {
+            "subfolder": subfolder_name,
+            "path": self.relative(target_dir),
+            "copied": len(copied),
+            "files": copied,
+            "manifest": str(manifest_path),
+        }

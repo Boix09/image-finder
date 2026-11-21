@@ -39,6 +39,7 @@
     pagination: { page: 1, pageSize: 50, total: 0, totalPages: 1 },
     cache: { count: 0, bytes: 0 },
     virtual: { rendered: 0, batchSize: 12, sentinelObserver: null },
+    selection: { paths: new Set(), mode: "browser", folderName: "" },
   };
 
   const els = {};
@@ -98,6 +99,12 @@
     els.paginationTotalPages = $("#paginationTotalPages");
     els.cacheSummary = $("#cacheSummary");
     els.clearCacheBtn = $("#clearCacheBtn");
+    els.selectionBar = $("#selectionBar");
+    els.selectionCount = $("#selectionCount");
+    els.selectionSelectAll = $("#selectionSelectAll");
+    els.selectionDownload = $("#selectionDownload");
+    els.selectionDestination = $("#selectionDestination");
+    els.selectionFolderName = $("#selectionFolderName");
     els.folderDialog = $("#folderDialog");
     els.folderForm = $("#folderForm");
     els.folderName = $("#folderName");
@@ -502,6 +509,8 @@
   }
 
   function renderGallery(errorMessage = "") {
+    state.selection.paths.clear();
+    updateSelectionBar();
     let list = state.images.slice();
     const needle = state.filter.trim().toLowerCase();
     if (needle) {
@@ -602,6 +611,10 @@
       article.setAttribute("data-path", escapeHtml(item.path));
       article.style.setProperty("--i", String(Math.min(start + index, 20)));
       article.innerHTML = `
+        <label class="card-checkbox-wrap">
+          <input type="checkbox" class="card-checkbox" data-path="${escapeHtml(item.path)}" ${state.selection.paths.has(item.path) ? "checked" : ""}>
+          <svg class="icon check-icon"><use href="#icon-check"/></svg>
+        </label>
         <div class="card-media">
           <img class="lazy-thumb progressive-img" data-src="${thumbUrl(item.path, 480, item.mtime)}" alt="${escapeHtml(title)}" decoding="async">
           <div class="card-actions">
@@ -666,6 +679,74 @@
     els.paginationTotalPages.textContent = String(totalPages);
     els.paginationPrev.disabled = page <= 1;
     els.paginationNext.disabled = page >= totalPages;
+  }
+
+  function updateSelectionBar() {
+    const count = state.selection.paths.size;
+    if (count > 0) {
+      els.selectionBar.hidden = false;
+      els.selectionCount.textContent = plural(count, "image", "images");
+      els.selectionSelectAll.textContent = count === state.rendered.length ? "Tout désélectionner" : "Tout sélectionner";
+    } else {
+      els.selectionBar.hidden = true;
+    }
+  }
+
+  function toggleSelectAll() {
+    const allPaths = state.rendered.map((item) => item.path);
+    if (state.selection.paths.size === allPaths.length) {
+      state.selection.paths.clear();
+    } else {
+      allPaths.forEach((p) => state.selection.paths.add(p));
+    }
+    // Mettre à jour les checkboxes visibles
+    $$(".card-checkbox").forEach((cb) => {
+      cb.checked = state.selection.paths.has(cb.dataset.path);
+    });
+    updateSelectionBar();
+  }
+
+  async function downloadSelection() {
+    const paths = Array.from(state.selection.paths);
+    if (!paths.length) return;
+
+    const destination = state.selection.mode;
+    const folderName = state.selection.folderName.trim() || undefined;
+
+    try {
+      const data = await api("/api/download-selection", {
+        method: "POST",
+        body: JSON.stringify({ paths, destination, folder_name: folderName }),
+      });
+
+      if (destination === "folder") {
+        showToast(
+          `${data.copied} image(s) copiée(s) dans « ${data.subfolder} »`,
+          "success",
+          5000
+        );
+        state.selection.paths.clear();
+        updateSelectionBar();
+      } else {
+        // Mode navigateur : lancer les téléchargements un par un
+        data.urls.forEach((url, index) => {
+          setTimeout(() => {
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "";
+            a.style.display = "none";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          }, index * 200);
+        });
+        showToast(`${data.count} téléchargement(s) lance(s).`, "info", 4000);
+        state.selection.paths.clear();
+        updateSelectionBar();
+      }
+    } catch (error) {
+      showToast(error.message, "error", 6000);
+    }
   }
 
   function showEmptyState(title, text, actionLabel, mode) {
@@ -1214,6 +1295,24 @@
       }
     });
 
+    els.selectionSelectAll.addEventListener("click", toggleSelectAll);
+
+    els.selectionDownload.addEventListener("click", downloadSelection);
+
+    els.selectionDestination.addEventListener("change", () => {
+      state.selection.mode = els.selectionDestination.value;
+      const folderInput = els.selectionFolderName;
+      if (state.selection.mode === "folder") {
+        folderInput.disabled = false;
+      } else {
+        folderInput.disabled = true;
+      }
+    });
+
+    els.selectionFolderName.addEventListener("input", () => {
+      state.selection.folderName = els.selectionFolderName.value;
+    });
+
     els.emptyAction.addEventListener("click", () => {
       if (state.emptyMode === "filter") {
         els.imageFilter.value = "";
@@ -1229,6 +1328,19 @@
     });
 
     els.gallery.addEventListener("click", (event) => {
+      const checkbox = event.target.closest(".card-checkbox");
+      if (checkbox) {
+        event.stopPropagation();
+        const path = checkbox.dataset.path;
+        if (state.selection.paths.has(path)) {
+          state.selection.paths.delete(path);
+        } else {
+          state.selection.paths.add(path);
+        }
+        checkbox.checked = state.selection.paths.has(path);
+        updateSelectionBar();
+        return;
+      }
       if (event.target.closest("a.card-action")) return;
       const card = event.target.closest(".card");
       if (!card) return;
