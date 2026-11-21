@@ -74,13 +74,14 @@
     els.searchSource = $("#searchSource");
     els.searchOrientation = $("#searchOrientation");
     els.jobPanel = $("#jobPanel");
+    els.jobClose = $("#jobClose");
+    els.jobCancel = $("#jobCancel");
     els.jobTitle = $("#jobTitle");
     els.jobMessage = $("#jobMessage");
     els.jobCount = $("#jobCount");
     els.jobElapsed = $("#jobElapsed");
     els.jobProgress = $("#jobProgress");
     els.jobLog = $("#jobLog");
-    els.jobClose = $("#jobClose");
     els.galleryTitle = $("#galleryTitle");
     els.gallerySubtitle = $("#gallerySubtitle");
     els.gallery = $("#gallery");
@@ -109,9 +110,12 @@
     els.selectionDestination = $("#selectionDestination");
     els.selectionFolderName = $("#selectionFolderName");
     els.inboxToggle = $("#inboxToggle");
+    els.unsplashKeyField = $("#unsplashKeyField");
+    els.unsplashKeyToggle = $("#unsplashKeyToggle");
     els.unsplashKey = $("#unsplashKey");
     els.unsplashKeySave = $("#unsplashKeySave");
     els.unsplashKeyStatus = $("#unsplashKeyStatus");
+    els.unsplashKeyBadge = $("#unsplashKeyBadge");
     els.moveBar = $("#moveBar");
     els.moveCount = $("#moveCount");
     els.moveFolderName = $("#moveFolderName");
@@ -354,6 +358,13 @@
         els.unsplashKeyStatus.textContent = state.unsplashKeyConfigured
           ? "Cle Unsplash configuree"
           : "Cle Unsplash non configuree";
+      }
+      if (state.unsplashKeyConfigured && els.unsplashKeyField) {
+        els.unsplashKeyField.querySelector(".field-body").hidden = true;
+        els.unsplashKeyToggle.setAttribute("aria-expanded", "false");
+        if (els.unsplashKeyBadge) {
+          els.unsplashKeyBadge.textContent = "Configuree";
+        }
       }
     }
 
@@ -904,6 +915,10 @@
         failJob(job);
         return;
       }
+      if (job.status === "cancelled") {
+        finishJob(job);
+        return;
+      }
       schedulePoll(jobId, 800);
     } catch (error) {
       state.pollFails += 1;
@@ -925,6 +940,7 @@
     if (job.status === "queued") title = "Recherche en attente…";
     if (job.status === "done") title = "Recherche terminée";
     if (job.status === "error") title = "Recherche interrompue";
+    if (job.status === "cancelled") title = "Recherche annulée";
     els.jobTitle.textContent = title;
     els.jobMessage.textContent = job.error || job.message || "Initialisation…";
 
@@ -1385,6 +1401,13 @@
       }
     });
 
+    els.unsplashKeyToggle.addEventListener("click", () => {
+      const expanded = els.unsplashKeyToggle.getAttribute("aria-expanded") === "true";
+      const body = els.unsplashKeyField.querySelector(".field-body");
+      els.unsplashKeyToggle.setAttribute("aria-expanded", String(!expanded));
+      body.hidden = expanded;
+    });
+
     els.unsplashKeySave.addEventListener("click", async () => {
       const key = (els.unsplashKey.value || "").trim();
       try {
@@ -1393,6 +1416,14 @@
           body: { unsplash_access_key: key },
         });
         state.unsplashKeyConfigured = Boolean(data.configured);
+        const body = els.unsplashKeyField.querySelector(".field-body");
+        body.hidden = true;
+        els.unsplashKeyToggle.setAttribute("aria-expanded", "false");
+        if (els.unsplashKeyBadge) {
+          els.unsplashKeyBadge.textContent = state.unsplashKeyConfigured
+            ? "Configuree"
+            : "";
+        }
         if (els.unsplashKeyStatus) {
           els.unsplashKeyStatus.textContent = state.unsplashKeyConfigured
             ? "Cle Unsplash enregistree"
@@ -1512,6 +1543,25 @@
     els.jobClose.addEventListener("click", () => {
       state.jobPanelHidden = true;
       els.jobPanel.hidden = true;
+    });
+
+    els.jobCancel.addEventListener("click", async () => {
+      if (!state.jobId) return;
+      try {
+        window.clearTimeout(state.pollTimer);
+        await api(`/api/jobs/${encodeURIComponent(state.jobId)}/cancel`, {
+          method: "POST",
+        });
+        state.jobId = null;
+        state.jobStatus = null;
+        state.jobPanelHidden = true;
+        els.jobPanel.hidden = true;
+        els.searchBtn.disabled = false;
+        els.searchBtn.innerHTML = `<svg class="icon"><use href="#icon-sparkles"/></svg><span>Rechercher</span>`;
+        showToast("Recherche annulee", "info", 3000);
+      } catch (error) {
+        showToast(error.message, "error", 6000);
+      }
     });
 
     document.addEventListener("click", (event) => {

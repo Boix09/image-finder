@@ -20,6 +20,7 @@
     <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></symbol>
     <symbol id="icon-expand" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
     <symbol id="icon-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="icon-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/></symbol>
     <symbol id="icon-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
     <symbol id="icon-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
     <symbol id="icon-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
@@ -112,11 +113,18 @@
               <span class="toggle-label">Mode Inbox (trier avant de ranger)</span>
             </label>
           </div>
-          <div class="field">
-            <span class="field-label"><svg class="icon"><use href="#icon-key"/></svg> Cle API Unsplash</span>
-            <input type="password" id="unsplashKey" placeholder="UNSPLASH_ACCESS_KEY" title="Cree une application sur unsplash.com/oauth/applications">
-            <button class="btn btn-small" id="unsplashKeySave" type="button">Enregistrer</button>
-            <span id="unsplashKeyStatus" class="muted small"></span>
+          <div class="field collapsible" id="unsplashKeyField">
+            <button class="field-toggle" id="unsplashKeyToggle" type="button" aria-expanded="false">
+              <svg class="icon"><use href="#icon-chevron-down"/></svg>
+              <span>Cle API Unsplash</span>
+              <span id="unsplashKeyBadge" class="badge"></span>
+            </button>
+            <div class="field-body" id="unsplashKeyBody" hidden>
+              <span class="field-label">Cle API Unsplash</span>
+              <input type="password" id="unsplashKey" placeholder="UNSPLASH_ACCESS_KEY" title="Cree une application sur unsplash.com/oauth/applications">
+              <button class="btn btn-small" id="unsplashKeySave" type="button">Enregistrer</button>
+              <span id="unsplashKeyStatus" class="muted small"></span>
+            </div>
           </div>
           <div class="version">Image Finder <span>v{{ version }}</span></div>
         </div>
@@ -237,6 +245,9 @@
               <span id="jobElapsed"></span>
               <button class="icon-btn job-close" id="jobClose" type="button" title="Masquer">
                 <svg class="icon"><use href="#icon-x"/></svg>
+              </button>
+              <button class="icon-btn job-cancel" id="jobCancel" type="button" title="Annuler la recherche">
+                <svg class="icon"><use href="#icon-stop"/></svg>
               </button>
             </div>
           </div>

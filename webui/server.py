@@ -528,4 +528,12 @@ def create_app(
     def api_job(job_id: str):
         return jsonify(ok=True, job=jobs.get(job_id))
 
+    @app.post("/api/jobs/<job_id>/cancel")
+    def api_job_cancel(job_id: str):
+        try:
+            jobs.cancel(job_id)
+        except KeyError:
+            raise ApiError("tache introuvable", 404)
+        return jsonify(ok=True, cancelled=True)
+
     return app

@@ -2867,6 +2867,58 @@ body.lightbox-open {
 }
 
 /* ------------------------------------------------------------
+   Champ repliable (cle API Unsplash)
+   ------------------------------------------------------------ */
+
+.collapsible .field-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.collapsible .field-toggle:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.collapsible .field-toggle .icon {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.2s ease;
+}
+
+.collapsible .field-body {
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-1);
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.badge {
+  margin-left: auto;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #000;
+  font-size: 0.65rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------
    Barre de deplacement depuis l'inbox
    ------------------------------------------------------------ */
 

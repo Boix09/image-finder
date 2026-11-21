@@ -39,6 +39,7 @@ class Job:
     log: list[str] = field(default_factory=list)
     result: dict | None = None
     error: str | None = None
+    cancelled: bool = False
 
     def payload(self) -> dict:
         end = self.finished_at or time.time()
@@ -61,6 +62,7 @@ class Job:
             "log": self.log[-30:],
             "result": self.result,
             "error": self.error,
+            "cancelled": self.cancelled,
         }
 
 
@@ -141,6 +143,23 @@ class JobManager:
             )
             thread.start()
             return job.payload()
+
+    def cancel(self, job_id: str) -> None:
+        """Annule la recherche en cours (marque le job comme annule)."""
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None:
+                raise KeyError(job_id)
+            if job.status not in {"queued", "running"}:
+                return
+            job.cancelled = True
+            job.status = "cancelled"
+            job.stage = "cancelled"
+            job.message = "Recherche annulee par l'utilisateur"
+            job.finished_at = time.time()
+            job.updated_at = job.finished_at
+            if self._active_id == job_id:
+                self._active_id = None
 
     def _run(self, job_id: str) -> None:
         def report(event: dict) -> None:
