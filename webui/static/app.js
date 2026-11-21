@@ -716,7 +716,7 @@
     try {
       const data = await api("/api/download-selection", {
         method: "POST",
-        body: JSON.stringify({ paths, destination, folder_name: folderName }),
+        body: { paths, destination, folder_name: folderName },
       });
 
       if (destination === "folder") {
