@@ -182,17 +182,11 @@
               <label class="field">
                 <span class="field-label">Images</span>
                 <span class="select-wrap">
-                  <select id="searchLimit">
-                    <option value="5">5</option>
-                    <option value="10" selected>10</option>
-                    <option value="20">20</option>
-                    <option value="30">30</option>
-                    <option value="60">60</option>
-                  </select>
+                  <input type="number" id="searchLimit" value="10" min="1" max="60">
                   <svg class="icon select-chevron"><use href="#icon-chevron-down"/></svg>
                 </span>
               </label>
-              <label class="field">
+              <label class="field source-field">
                 <span class="field-label">Source</span>
                 <div class="source-multi" id="sourceMulti">
                   <button class="source-trigger" id="sourceTrigger" type="button" aria-expanded="false">

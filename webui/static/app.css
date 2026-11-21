@@ -3066,6 +3066,27 @@ body.lightbox-open {
   color: var(--accent);
 }
 
+.source-field {
+  min-width: 170px;
+  flex: 1;
+}
+
+.source-trigger {
+  min-width: 0;
+}
+
+.source-trigger-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  margin-right: 6px;
+}
+
+.source-list {
+  min-width: 170px;
+}
+
 /* ------------------------------------------------------------
    PWA / mobile tweaks
    ------------------------------------------------------------ */

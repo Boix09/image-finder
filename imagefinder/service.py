@@ -139,10 +139,17 @@ def run_download(
     if not request:
         raise ValueError("demande vide : precisez un sujet (ex. : voiture de sport)")
 
-    if source not in ALLOWED_SOURCES:
-        raise ValueError(
-            f"source inconnue : {source} (valeurs acceptees : {', '.join(ALLOWED_SOURCES)})"
-        )
+    if isinstance(source, str):
+        sources = [source.strip().lower()]
+    else:
+        sources = [str(s).strip().lower() for s in source if str(s).strip()]
+    if not sources:
+        sources = ["all"]
+    for s in sources:
+        if s not in ALLOWED_SOURCES:
+            raise ValueError(
+                f"source inconnue : {s} (valeurs acceptees : {', '.join(ALLOWED_SOURCES)})"
+            )
     if orientation not in ALLOWED_ORIENTATIONS:
         raise ValueError(
             "orientation inconnue : "
