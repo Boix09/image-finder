@@ -6,6 +6,7 @@ import gzip
 import hmac
 import secrets
 from pathlib import Path
+from urllib.parse import quote
 
 from flask import Flask, Response, jsonify, render_template, request, send_file
 
@@ -329,7 +330,7 @@ def create_app(
                 destination="browser",
                 count=len(paths),
                 urls=[
-                    f"/api/download?path={__import__('urllib.parse').quote(p)}"
+                    f"/api/download?path={quote(p)}"
                     for p in paths
                 ],
             )
