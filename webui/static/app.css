@@ -3088,5 +3088,37 @@ body.lightbox-open {
 }
 
 /* ------------------------------------------------------------
+   Badge beta (dore, anime)
+   ------------------------------------------------------------ */
+
+.badge-beta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f59e0b, #d97706, #b45309);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
+  animation: beta-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes beta-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.55);
+  }
+}
+
+/* ------------------------------------------------------------
    PWA / mobile tweaks
    ------------------------------------------------------------ */

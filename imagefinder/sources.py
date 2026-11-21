@@ -318,6 +318,22 @@ def search_images(query: str, source: str | list[str], limit: int) -> list[Candi
         providers.append(("DuckDuckGo", search_duckduckgo))
     if "openverse" in source_set:
         providers.append(("Openverse", search_openverse))
+    if "pexels" in source_set:
+        providers.append(("Pexels", search_pexels))
+    if "pixabay" in source_set:
+        providers.append(("Pixabay", search_pixabay))
+    if "nasa" in source_set:
+        providers.append(("NASA Image Library", search_nasa))
+    if "metmuseum" in source_set:
+        providers.append(("Metropolitan Museum", search_metmuseum))
+    if "loc" in source_set:
+        providers.append(("Library of Congress", search_loc))
+    if "smithsonian" in source_set:
+        providers.append(("Smithsonian Open Access", search_smithsonian))
+    if "freeimagedomain" in source_set:
+        providers.append(("FreeImageDomain", search_freeimagedomain))
+    if "brave" in source_set:
+        providers.append(("Brave Search", search_brave))
 
     per_source = min(60, max(30, limit * 4))
     collected: list[Candidate] = []
@@ -437,6 +453,332 @@ def search_unsplash(query: str, limit: int) -> list[Candidate]:
                 thumbnail=normalize_image_url(
                     str(urls.get("thumb") or urls.get("small") or "")
                 ),
+            )
+        )
+    return results
+
+
+# ── Pexels (cle API requise) ───────────────────────────────────
+
+def search_pexels(query: str, limit: int) -> list[Candidate]:
+    key = os.environ.get("PEXELS_API_KEY") or ""
+    if not key:
+        raise RuntimeError("cle PEXELS_API_KEY manquante (definissez la variable d'environnement)")
+    headers = {"Authorization": key, "User-Agent": USER_AGENT}
+    params = {"query": query, "per_page": min(limit, 80), "page": 1}
+    response = requests.get(
+        "https://api.pexels.com/v1/search", params=params, headers=headers, timeout=TIMEOUT
+    )
+    if response.status_code in (401, 403):
+        raise RuntimeError("acces refuse par Pexels (cle PEXELS_API_KEY invalide ou manquante)")
+    if response.status_code == 429:
+        raise RuntimeError("limite de requetes Pexels atteinte, reessayez plus tard")
+    response.raise_for_status()
+    payload = response.json()
+    results: list[Candidate] = []
+    for index, item in enumerate(payload.get("photos") or []):
+        if len(results) >= limit:
+            break
+        image_url = normalize_image_url(str(item.get("src", {}).get("original") or item.get("src", {}).get("large2x") or ""))
+        if not image_url:
+            continue
+        results.append(
+            Candidate(
+                image_url=image_url,
+                title=str(item.get("alt") or "Sans titre"),
+                provider="Pexels",
+                source_page=str(item.get("url") or ""),
+                width=to_int(item.get("width")),
+                height=to_int(item.get("height")),
+                rank=index + 1,
+                license="pexels",
+                license_url="https://www.pexels.com/license/",
+                creator=str(item.get("photographer") or ""),
+                thumbnail=normalize_image_url(str(item.get("src", {}).get("tiny") or item.get("src", {}).get("small") or "")),
+            )
+        )
+    return results
+
+
+# ── Pixabay (cle API requise) ──────────────────────────────────
+
+def search_pixabay(query: str, limit: int) -> list[Candidate]:
+    key = os.environ.get("PIXABAY_API_KEY") or ""
+    if not key:
+        raise RuntimeError("cle PIXABAY_API_KEY manquante (definissez la variable d'environnement)")
+    params = {
+        "key": key,
+        "q": query,
+        "per_page": min(limit, 200),
+        "page": 1,
+        "safesearch": "true",
+    }
+    response = requests.get("https://pixabay.com/api/", params=params, headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT)
+    if response.status_code in (401, 403):
+        raise RuntimeError("acces refuse par Pixabay (cle PIXABAY_API_KEY invalide ou manquante)")
+    response.raise_for_status()
+    payload = response.json()
+    results: list[Candidate] = []
+    for index, item in enumerate(payload.get("hits") or []):
+        if len(results) >= limit:
+            break
+        image_url = normalize_image_url(str(item.get("webformatURL") or item.get("largeImageURL") or ""))
+        if not image_url:
+            continue
+        results.append(
+            Candidate(
+                image_url=image_url,
+                title=str(item.get("tags") or "Sans titre"),
+                provider="Pixabay",
+                source_page=str(item.get("pageURL") or ""),
+                width=to_int(item.get("imageWidth")),
+                height=to_int(item.get("imageHeight")),
+                rank=index + 1,
+                license="pixabay",
+                license_url="https://pixabay.com/service/license/",
+                creator=str(item.get("user") or ""),
+                thumbnail=normalize_image_url(str(item.get("previewURL") or "")),
+            )
+        )
+    return results
+
+
+# ── NASA Image & Video Library (sans cle) ──────────────────────
+
+def search_nasa(query: str, limit: int) -> list[Candidate]:
+    params = {"q": query, "media_type": "image", "page_size": min(limit, 100)}
+    response = requests.get(
+        "https://images-api.nasa.gov/search", params=params, headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT
+    )
+    response.raise_for_status()
+    payload = response.json()
+    results: list[Candidate] = []
+    items = ((payload.get("collection") or {}).get("items") or [])
+    for index, item in enumerate(items):
+        if len(results) >= limit:
+            break
+        data_list = item.get("data") or []
+        data = data_list[0] if data_list else {}
+        links = item.get("links") or []
+        image_url = normalize_image_url(str(links[0].get("href") or "") if links else "")
+        if not image_url:
+            continue
+        results.append(
+            Candidate(
+                image_url=image_url,
+                title=str(data.get("title") or "Sans titre"),
+                provider="NASA Image Library",
+                source_page=str(data.get("nasa_id") or ""),
+                width=None,
+                height=None,
+                rank=index + 1,
+                license="nasa",
+                license_url="https://www.nasa.gov/multimedia/guidelines/index.html",
+                creator=str(data.get("center") or "NASA"),
+                thumbnail=image_url,
+            )
+        )
+    return results
+
+
+# ── Metropolitan Museum of Art (sans cle) ──────────────────────
+
+def search_metmuseum(query: str, limit: int) -> list[Candidate]:
+    params = {"q": query, "hasImages": "true", "perPage": min(limit, 100)}
+    response = requests.get(
+        "https://collectionapi.metmuseum.org/public/collection/v1/search",
+        params=params,
+        headers={"User-Agent": USER_AGENT},
+        timeout=TIMEOUT,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    object_ids = payload.get("objectIDs") or []
+    results: list[Candidate] = []
+    for index, object_id in enumerate(object_ids[:limit]):
+        try:
+            detail = requests.get(
+                f"https://collectionapi.metmuseum.org/public/collection/v1/objects/{object_id}",
+                headers={"User-Agent": USER_AGENT},
+                timeout=TIMEOUT,
+            )
+            detail.raise_for_status()
+            obj = detail.json()
+        except Exception:
+            continue
+        image_url = normalize_image_url(str(obj.get("primaryImage") or obj.get("primaryImageSmall") or ""))
+        if not image_url:
+            continue
+        results.append(
+            Candidate(
+                image_url=image_url,
+                title=str(obj.get("title") or "Sans titre"),
+                provider="Metropolitan Museum",
+                source_page=str(obj.get("objectURL") or ""),
+                width=to_int(obj.get("dimensions")),
+                height=None,
+                rank=index + 1,
+                license="metmuseum",
+                license_url="https://www.metmuseum.org/about-the-met/policies-and-documents/image-assets",
+                creator=str(obj.get("artistDisplayName") or "Met Museum"),
+                thumbnail=normalize_image_url(str(obj.get("primaryImageSmall") or "")),
+            )
+        )
+    return results
+
+
+# ── Library of Congress (sans cle) ─────────────────────────────
+
+def search_loc(query: str, limit: int) -> list[Candidate]:
+    params = {"q": query, "fo": "json", "c": min(limit, 100), "at": "results"}
+    response = requests.get(
+        "https://www.loc.gov/collections/", params=params, headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT
+    )
+    response.raise_for_status()
+    payload = response.json()
+    results: list[Candidate] = []
+    for index, item in enumerate(payload.get("results") or []):
+        if len(results) >= limit:
+            break
+        image_url = normalize_image_url(str(item.get("image") or item.get("thumbnail") or ""))
+        if not image_url:
+            continue
+        results.append(
+            Candidate(
+                image_url=image_url,
+                title=str(item.get("title") or "Sans titre"),
+                provider="Library of Congress",
+                source_page=str(item.get("url") or ""),
+                width=None,
+                height=None,
+                rank=index + 1,
+                license="loc",
+                license_url="https://www.loc.gov/",
+                creator=str(item.get("contributor") or "Library of Congress"),
+                thumbnail=image_url,
+            )
+        )
+    return results
+
+
+# ── Smithsonian Open Access (cle via api.data.gov) ─────────────
+
+def search_smithsonian(query: str, limit: int) -> list[Candidate]:
+    key = os.environ.get("SMITHSONIAN_API_KEY") or ""
+    if not key:
+        raise RuntimeError("cle SMITHSONIAN_API_KEY manquante (definissez la variable d'environnement)")
+    params = {"q": query, "rows": min(limit, 100), "api_key": key}
+    response = requests.get(
+        "https://api.si.edu/metadata/api/v1/search", params=params, headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT
+    )
+    if response.status_code in (401, 403):
+        raise RuntimeError("acces refuse par Smithsonian (cle SMITHSONIAN_API_KEY invalide ou manquante)")
+    response.raise_for_status()
+    payload = response.json()
+    results: list[Candidate] = []
+    for index, item in enumerate(payload.get("response", {}).get("docs") or []):
+        if len(results) >= limit:
+            break
+        image_url = normalize_image_url(str(item.get("thumbnail") or item.get("url") or ""))
+        if not image_url:
+            continue
+        results.append(
+            Candidate(
+                image_url=image_url,
+                title=str(item.get("title") or "Sans titre"),
+                provider="Smithsonian Open Access",
+                source_page=str(item.get("url") or ""),
+                width=None,
+                height=None,
+                rank=index + 1,
+                license="smithsonian",
+                license_url="https://www.si.edu/openaccess",
+                creator=str(item.get("name") or "Smithsonian"),
+                thumbnail=image_url,
+            )
+        )
+    return results
+
+
+# ── FreeImageDomain (sans cle, aggregateur) ────────────────────
+
+def search_freeimagedomain(query: str, limit: int) -> list[Candidate]:
+    params = {"q": query, "limit": min(limit, 20), "license": "cc0"}
+    try:
+        response = requests.get(
+            "https://free-image-domain-api.vercel.app/retrieve_public_images",
+            params=params,
+            headers={"User-Agent": USER_AGENT},
+            timeout=TIMEOUT,
+        )
+        response.raise_for_status()
+    except Exception:
+        return []
+    payload = response.json()
+    results: list[Candidate] = []
+    sources = payload.get("sources") or {}
+    for index, (source_name, entries) in enumerate(sources.items()):
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if len(results) >= limit:
+                break
+            image_url = normalize_image_url(str(entry.get("url") or ""))
+            if not image_url:
+                continue
+            results.append(
+                Candidate(
+                    image_url=image_url,
+                    title=str(entry.get("title") or source_name or "Sans titre"),
+                    provider=f"FreeImageDomain ({source_name})",
+                    source_page=str(entry.get("sourcePage") or ""),
+                    width=None,
+                    height=None,
+                    rank=index + 1,
+                    license="cc0",
+                    license_url="https://creativecommons.org/publicdomain/zero/1.0/",
+                    creator=str(entry.get("creator") or ""),
+                    thumbnail=image_url,
+                )
+            )
+    return results
+
+
+# ── Brave Search (cle requise) ─────────────────────────────────
+
+def search_brave(query: str, limit: int) -> list[Candidate]:
+    key = os.environ.get("BRAVE_API_KEY") or ""
+    if not key:
+        raise RuntimeError("cle BRAVE_API_KEY manquante (definissez la variable d'environnement)")
+    params = {"q": query, "count": min(limit, 20), "search_lang": "fr", "safesearch": "moderate"}
+    headers = {"Accept": "application/json", "X-Subscription-Token": key, "User-Agent": USER_AGENT}
+    response = requests.get(
+        "https://api.search.brave.com/res/v1/web/search", params=params, headers=headers, timeout=TIMEOUT
+    )
+    if response.status_code in (401, 403):
+        raise RuntimeError("acces refuse par Brave Search (cle BRAVE_API_KEY invalide ou manquante)")
+    response.raise_for_status()
+    payload = response.json()
+    results: list[Candidate] = []
+    for index, item in enumerate((payload.get("web") or {}).get("results") or []):
+        if len(results) >= limit:
+            break
+        image_url = normalize_image_url(str(item.get("thumbnail", {}).get("src") or item.get("page_url") or ""))
+        if not image_url:
+            continue
+        results.append(
+            Candidate(
+                image_url=image_url,
+                title=str(item.get("title") or "Sans titre"),
+                provider="Brave Search",
+                source_page=str(item.get("url") or ""),
+                width=None,
+                height=None,
+                rank=index + 1,
+                license="brave",
+                license_url="https://search.brave.com/",
+                creator=str(item.get("source") or "Brave"),
+                thumbnail=image_url,
             )
         )
     return results

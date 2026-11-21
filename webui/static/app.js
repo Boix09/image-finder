@@ -42,7 +42,7 @@
     selection: { paths: new Set(), mode: "browser", folderName: "" },
     inboxMode: false,
     unsplashKeyConfigured: false,
-    selectedSources: ["all", "yandex", "commons", "ddg", "openverse", "unsplash"],
+    selectedSources: ["all", "yandex", "commons", "ddg", "openverse", "unsplash", "pexels", "pixabay", "nasa", "metmuseum", "loc", "smithsonian", "freeimagedomain", "brave"],
   };
 
   const els = {};
@@ -1450,7 +1450,7 @@
     function updateSourceUI() {
       const all = state.selectedSources.includes("all");
       const individual = state.selectedSources.filter((s) => s !== "all");
-      const count = all ? 6 : individual.length;
+      const count = all ? 13 : individual.length;
 
       els.sourceCheckboxes.forEach((cb) => {
         if (cb.value === "all") cb.checked = all;
@@ -1478,7 +1478,7 @@
       cb.addEventListener("change", () => {
         if (cb.value === "all") {
           if (cb.checked) {
-            state.selectedSources = ["all", "yandex", "commons", "ddg", "openverse", "unsplash"];
+            state.selectedSources = ["all", "yandex", "commons", "ddg", "openverse", "unsplash", "pexels", "pixabay", "nasa", "metmuseum", "loc", "smithsonian", "freeimagedomain", "brave"];
           } else {
             state.selectedSources = state.selectedSources.filter((s) => s !== "all");
           }
@@ -1487,8 +1487,8 @@
             if (!state.selectedSources.includes(cb.value)) {
               state.selectedSources.push(cb.value);
             }
-            if (state.selectedSources.filter((s) => s !== "all").length === 5) {
-              state.selectedSources = ["all", "yandex", "commons", "ddg", "openverse", "unsplash"];
+            if (state.selectedSources.filter((s) => s !== "all").length === 13) {
+              state.selectedSources = ["all", "yandex", "commons", "ddg", "openverse", "unsplash", "pexels", "pixabay", "nasa", "metmuseum", "loc", "smithsonian", "freeimagedomain", "brave"];
             }
           } else {
             state.selectedSources = state.selectedSources.filter((s) => s !== cb.value);
