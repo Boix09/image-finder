@@ -103,6 +103,8 @@ class JobManager:
         source: str,
         orientation: str,
         min_side: int,
+        inbox_mode: bool = False,
+        inbox_folder: str = "inbox",
     ) -> dict:
         with self._lock:
             active = self._active_locked()
@@ -120,6 +122,8 @@ class JobManager:
                 source=source,
                 orientation=orientation,
                 min_side=min_side,
+                inbox_mode=inbox_mode,
+                inbox_folder=inbox_folder,
             )
             self._jobs[job.id] = job
             self._order.append(job.id)
