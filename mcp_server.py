@@ -26,7 +26,14 @@ from imagefinder.service import (  # noqa: E402
 )
 
 SERVER_NAME = "image-finder"
-SERVER_VERSION = "3.2.0"
+
+from pathlib import Path
+
+_VERSION_FILE = Path(__file__).resolve().parent / "VERSION"
+try:
+    SERVER_VERSION = _VERSION_FILE.read_text(encoding="utf-8").strip()
+except Exception:
+    SERVER_VERSION = "0.0.0"
 DEFAULT_PROTOCOL = "2024-11-05"
 
 INSTRUCTIONS = (

@@ -158,6 +158,8 @@ def create_app(
 
         if request.path == "/" or request.path.startswith("/api/"):
             response.headers.setdefault("Cache-Control", "no-store")
+        elif request.path.startswith("/static/"):
+            response.headers.setdefault("Cache-Control", "public, max-age=31536000, immutable")
         elif request.path.startswith("/api/thumb"):
             response.headers.setdefault("Cache-Control", "public, max-age=31536000, immutable")
         elif request.path.startswith("/api/image"):
