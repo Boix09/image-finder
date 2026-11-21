@@ -376,7 +376,7 @@ def search_images(query: str, source: str | list[str], limit: int) -> list[Candi
             "aucune image trouvee. Erreurs par source : " + detail
         )
 
-    return unique
+    return unique, errors
 
 
 def search_unsplash(query: str, limit: int) -> list[Candidate]:

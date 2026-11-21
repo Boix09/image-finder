@@ -977,6 +977,8 @@
 
     const target = job.result?.folder || job.folder || "";
     const count = Number(job.result?.count || 0);
+    const sourceErrors = job.result?.source_errors || {};
+    const errorSources = Object.keys(sourceErrors).filter((s) => s !== "all");
     showToast(
       count
         ? `${plural(count, "image téléchargée", "images téléchargées")} dans « ${target} ».`
@@ -984,6 +986,14 @@
       "success",
       6000
     );
+
+    if (errorSources.length > 0) {
+      showToast(
+        `Certaines sources ont échoué : ${errorSources.join(", ")}`,
+        "warning",
+        8000
+      );
+    }
 
     try {
       const data = await api("/api/state");

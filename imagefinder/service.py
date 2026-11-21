@@ -177,7 +177,7 @@ def run_download(
         progress=4,
     )
     with contextlib.redirect_stdout(log_buffer):
-        candidates = search_images(query, source, limit)
+        candidates, source_errors = search_images(query, source, limit)
         _emit(
             progress,
             stage="search",
@@ -229,6 +229,7 @@ def run_download(
             "candidates": [_candidate_payload(item) for item in filtered[:limit]],
             "folder_detected": folder,
             "log": log,
+            "source_errors": source_errors,
         }
 
     manifest = destination / "manifest.json"
@@ -251,6 +252,7 @@ def run_download(
         "gallery": str(gallery_file.resolve()) if gallery_file else "",
         "folder_detected": folder,
         "log": log,
+        "source_errors": source_errors,
     }
 
 

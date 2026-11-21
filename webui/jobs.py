@@ -228,6 +228,7 @@ class JobManager:
                     "downloaded": result.get("downloaded", 0),
                     "rejected": result.get("rejected", 0),
                     "files": list(result.get("files") or [])[:60],
+                    "source_errors": result.get("source_errors") or {},
                 }
                 for line in result.get("log") or []:
                     text = str(line).strip()
