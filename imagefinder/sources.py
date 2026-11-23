@@ -352,8 +352,13 @@ def search_images(query: str, source: str | list[str], limit: int) -> list[Candi
                 print(f"  {name}: {len(results)} resultat(s)")
                 collected.extend(results)
             except Exception as exc:
-                errors[name] = str(exc)
-                print(f"  {name}: erreur ({exc})", file=sys.stderr)
+                msg = str(exc)
+                lower = msg.lower()
+                if "cle" in lower and ("manquante" in lower or "requise" in lower):
+                    print(f"  {name}: ignoree (cle requise)", file=sys.stderr)
+                    continue
+                errors[name] = msg
+                print(f"  {name}: erreur ({msg})", file=sys.stderr)
 
     seen: set[str] = set()
     unique: list[Candidate] = []

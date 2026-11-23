@@ -1435,25 +1435,37 @@
       }
     });
 
+    const ALL_SOURCES = ["yandex", "commons", "ddg", "openverse", "unsplash", "pexels", "pixabay", "nasa", "metmuseum", "loc", "smithsonian", "freeimagedomain", "brave"];
+
     els.sourceCheckboxes.forEach((cb) => {
       cb.addEventListener("change", () => {
+        const allCb = els.sourceCheckboxes.find((c) => c.value === "all");
+        const individualCbs = els.sourceCheckboxes.filter((c) => c.value !== "all");
+
         if (cb.value === "all") {
           if (cb.checked) {
-            state.selectedSources = ["all", "yandex", "commons", "ddg", "openverse", "unsplash", "pexels", "pixabay", "nasa", "metmuseum", "loc", "smithsonian", "freeimagedomain", "brave"];
+            // Tout selectionner
+            state.selectedSources = ["all", ...ALL_SOURCES];
+            individualCbs.forEach((c) => { c.checked = true; });
           } else {
-            state.selectedSources = state.selectedSources.filter((s) => s !== "all");
+            // Tout desselectionner
+            state.selectedSources = [];
+            individualCbs.forEach((c) => { c.checked = false; });
           }
         } else {
+          // Source individuelle
           if (cb.checked) {
             if (!state.selectedSources.includes(cb.value)) {
               state.selectedSources.push(cb.value);
             }
-            if (state.selectedSources.filter((s) => s !== "all").length === 13) {
-              state.selectedSources = ["all", "yandex", "commons", "ddg", "openverse", "unsplash", "pexels", "pixabay", "nasa", "metmuseum", "loc", "smithsonian", "freeimagedomain", "brave"];
+            if (individualCbs.every((c) => c.checked)) {
+              state.selectedSources = ["all", ...ALL_SOURCES];
+              allCb.checked = true;
             }
           } else {
             state.selectedSources = state.selectedSources.filter((s) => s !== cb.value);
             state.selectedSources = state.selectedSources.filter((s) => s !== "all");
+            allCb.checked = false;
           }
         }
         updateSourceUI();
