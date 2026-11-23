@@ -88,6 +88,10 @@
     els.jobElapsed = $("#jobElapsed");
     els.jobProgress = $("#jobProgress");
     els.jobLog = $("#jobLog");
+    els.jobPreviewPanel = $("#previewPanel");
+    els.jobPreviewTitle = $("#previewTitle");
+    els.jobPreviewCount = $("#previewCount");
+    els.jobPreviewGrid = $("#previewGrid");
     els.galleryTitle = $("#galleryTitle");
     els.gallerySubtitle = $("#gallerySubtitle");
     els.gallery = $("#gallery");
@@ -913,6 +917,7 @@
       const job = data.job;
       state.pollFails = 0;
       renderJob(job);
+      renderPreview(job.preview || []);
       if (job.status === "done") {
         finishJob(job);
         return;
@@ -968,12 +973,36 @@
     els.jobLog.scrollTop = els.jobLog.scrollHeight;
   }
 
+  function renderPreview(previews) {
+    if (!els.jobPreviewPanel) return;
+    if (!previews || !previews.length) {
+      els.jobPreviewPanel.hidden = true;
+      return;
+    }
+    els.jobPreviewPanel.hidden = false;
+    const count = previews.length;
+    els.jobPreviewCount.textContent = `${count} image(s) trouvée(s)`;
+    els.jobPreviewGrid.innerHTML = previews
+      .map(
+        (item, index) => `
+        <div class="preview-card" data-index="${index}">
+          <img class="preview-img" src="${escapeHtml(item.image_url || "")}" alt="${escapeHtml(item.title || "")}" loading="lazy" decoding="async" onerror="this.style.display='none'; this.previousElementSibling?.style.display='none';">
+          <div class="preview-info">
+            <div class="preview-title" title="${escapeHtml(item.title || "")}">${escapeHtml(item.title || "Sans titre")}</div>
+            <div class="preview-meta">${item.provider || ""} ${item.width && item.height ? "· " + item.width + "×" + item.height : ""}</div>
+          </div>
+        </div>`
+      )
+      .join("");
+  }
+
   async function finishJob(job) {
     state.jobStatus = "done";
     state.jobId = null;
     window.clearTimeout(state.pollTimer);
     renderJob(job);
     setSearchBusy(false);
+    if (els.jobPreviewPanel) els.jobPreviewPanel.hidden = true;
 
     const target = job.result?.folder || job.folder || "";
     const count = Number(job.result?.count || 0);
@@ -1007,6 +1036,7 @@
     state.jobStatus = "error";
     state.jobId = null;
     window.clearTimeout(state.pollTimer);
+    if (els.jobPreviewPanel) els.jobPreviewPanel.hidden = true;
     if (job.status === "error") {
       renderJob(job);
     } else {

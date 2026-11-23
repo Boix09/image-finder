@@ -41,6 +41,7 @@ class Job:
     result: dict | None = None
     error: str | None = None
     cancelled: bool = False
+    preview: list = field(default_factory=list)
 
     def payload(self) -> dict:
         end = self.finished_at or time.time()
@@ -64,6 +65,7 @@ class Job:
             "result": self.result,
             "error": self.error,
             "cancelled": self.cancelled,
+            "preview": self.preview,
         }
 
 
@@ -194,6 +196,8 @@ class JobManager:
                 if message and (not job.log or job.log[-1] != str(message)):
                     job.log.append(str(message))
                     job.log = job.log[-40:]
+                if "preview" in event:
+                    job.preview = event["preview"]
 
         try:
             with self._lock:

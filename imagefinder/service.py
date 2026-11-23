@@ -197,6 +197,14 @@ def run_download(
                     continue
             filtered.append(candidate)
 
+        _emit(
+            progress,
+            stage="preview",
+            message=f"{len(filtered)} image(s) trouvee(s)",
+            progress=20,
+            preview=[_candidate_payload(c) for c in filtered],
+        )
+
         if not filtered:
             raise RuntimeError(
                 "aucune image trouvee. Essayez une autre formulation ou une autre source."
