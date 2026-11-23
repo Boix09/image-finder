@@ -534,6 +534,7 @@ def create_app(
             min_side=min_side,
             inbox_mode=inbox_mode,
             inbox_folder=inbox_folder,
+            library_ref=library,
         )
         return jsonify(ok=True, job=job), 202
 

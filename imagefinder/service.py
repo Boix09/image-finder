@@ -129,6 +129,7 @@ def run_download(
     progress: ProgressCallback | None = None,
     inbox_mode: bool = False,
     inbox_folder: str = "inbox",
+    library_ref=None,
 ) -> dict:
     """Cherche des images et telecharge les meilleures.
 
@@ -234,6 +235,9 @@ def run_download(
 
     manifest = destination / "manifest.json"
     gallery_file = destination / "index.html" if gallery else None
+
+    if library_ref is not None and hasattr(library_ref, "_invalidate"):
+        library_ref._invalidate()
 
     return {
         "ok": True,

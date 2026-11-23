@@ -27,6 +27,7 @@ class Job:
     min_side: int
     inbox_mode: bool = False
     inbox_folder: str = "inbox"
+    library_ref: object = None
     status: str = "queued"
     stage: str = "queued"
     message: str = "En attente..."
@@ -107,6 +108,7 @@ class JobManager:
         min_side: int,
         inbox_mode: bool = False,
         inbox_folder: str = "inbox",
+        library_ref=None,
     ) -> dict:
         with self._lock:
             active = self._active_locked()
@@ -126,6 +128,7 @@ class JobManager:
                 min_side=min_side,
                 inbox_mode=inbox_mode,
                 inbox_folder=inbox_folder,
+                library_ref=library_ref,
             )
             self._jobs[job.id] = job
             self._order.append(job.id)
@@ -193,6 +196,11 @@ class JobManager:
                     job.log = job.log[-40:]
 
         try:
+            with self._lock:
+                job = self._jobs.get(job_id)
+                if job is None:
+                    return
+            library_ref = job.library_ref
             result = run_download(
                 job_request := self._job_field(job_id, "request"),
                 output=self._job_field(job_id, "output_dir"),
@@ -205,6 +213,7 @@ class JobManager:
                 progress=report,
                 inbox_mode=self._job_field(job_id, "inbox_mode"),
                 inbox_folder=self._job_field(job_id, "inbox_folder"),
+                library_ref=library_ref,
             )
             with self._lock:
                 job = self._jobs.get(job_id)
