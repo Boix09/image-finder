@@ -86,7 +86,7 @@ def create_app(
             "password_protected": bool(app.config["IMAGE_FINDER_PASSWORD"]),
             "inbox_mode": library.config.inbox_mode,
             "inbox_folder": library.config.inbox_folder,
-            "unsplash_key_configured": bool(library.config.unsplash_access_key),
+            "api_keys_configured": library.config.api_keys_configured,
         }
 
     def json_payload() -> dict:
@@ -405,21 +405,29 @@ def create_app(
             inbox_folder=library.config.inbox_folder,
         )
 
-    @app.get("/api/config/unsplash")
-    def api_config_unsplash_get():
+    @app.get("/api/config/api-key")
+    def api_config_api_key_get():
+        provider = request.args.get("provider") or ""
+        if provider not in library.config.api_keys:
+            raise ApiError("source inconnue pour cle API")
         return jsonify(
             ok=True,
-            configured=bool(library.config.unsplash_access_key),
+            provider=provider,
+            configured=bool(library.config.api_keys.get(provider, "")),
         )
 
-    @app.post("/api/config/unsplash")
-    def api_config_unsplash():
+    @app.post("/api/config/api-key")
+    def api_config_api_key():
         payload = json_payload()
-        key = payload.get("unsplash_access_key") or ""
-        library.config.set_unsplash_access_key(key)
+        provider = payload.get("provider") or ""
+        key = payload.get("key") or ""
+        if provider not in library.config.api_keys:
+            raise ApiError("source inconnue pour cle API")
+        library.config.set_api_key(provider, key)
         return jsonify(
             ok=True,
-            configured=bool(library.config.unsplash_access_key),
+            provider=provider,
+            configured=bool(library.config.api_keys.get(provider, "")),
         )
 
     @app.post("/api/root")

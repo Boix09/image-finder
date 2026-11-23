@@ -25,12 +25,20 @@ from .sources import search_images
 from .textutil import clean_query, matches_orientation, split_folder
 
 SOURCE_LABELS = {
-    "all": "Yandex Images + Wikimedia Commons",
+    "all": "Toutes les sources",
     "yandex": "Yandex Images",
     "commons": "Wikimedia Commons",
     "ddg": "DuckDuckGo (experimental)",
     "openverse": "Openverse (jeton requis)",
     "unsplash": "Unsplash (cle API requise)",
+    "pexels": "Pexels (cle API requise, BETA)",
+    "pixabay": "Pixabay (cle API requise, BETA)",
+    "nasa": "NASA Image Library (BETA)",
+    "metmuseum": "Metropolitan Museum (BETA)",
+    "loc": "Library of Congress (BETA)",
+    "smithsonian": "Smithsonian Open Access (cle API requise, BETA)",
+    "freeimagedomain": "FreeImageDomain (BETA)",
+    "brave": "Brave Search (cle API requise, BETA)",
 }
 
 
@@ -55,7 +63,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-n", "--limit", type=int, default=10, help="nombre d'images a garder (defaut : 10, max : 60)")
     parser.add_argument(
         "-s", "--source",
-        choices=["all", "yandex", "commons", "ddg", "openverse", "unsplash"], default="all",
+        choices=["all", "yandex", "commons", "ddg", "openverse", "unsplash", "pexels", "pixabay", "nasa", "metmuseum", "loc", "smithsonian", "freeimagedomain", "brave"], default="all",
         help="source(s) d'images (defaut : all = Yandex + Commons)",
     )
     parser.add_argument("-j", "--workers", type=int, default=6, help="telechargements simultanes (defaut : 6)")
@@ -149,7 +157,10 @@ def run_search(raw_request: str, args, parser: argparse.ArgumentParser) -> int:
     if not PIL_AVAILABLE:
         print("Note      : Pillow absent, classement base sur les metadonnees seulement.")
 
-    candidates = search_images(query, args.source, args.limit)
+    candidates, source_errors = search_images(query, args.source, args.limit)
+    if source_errors:
+        for src, err in source_errors.items():
+            print(f"Avertissement source {src}: {err}", file=sys.stderr)
     filtered = []
     for candidate in candidates:
         if candidate.width and candidate.height:

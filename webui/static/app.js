@@ -41,7 +41,7 @@
     virtual: { rendered: 0, batchSize: 12, sentinelObserver: null },
     selection: { paths: new Set(), mode: "browser", folderName: "" },
     inboxMode: false,
-    unsplashKeyConfigured: false,
+    apiKeysConfigured: {},
     selectedSources: ["all", "yandex", "commons", "ddg", "openverse", "unsplash", "pexels", "pixabay", "nasa", "metmuseum", "loc", "smithsonian", "freeimagedomain", "brave"],
   };
 
@@ -78,6 +78,14 @@
     els.sourceBadge = $("#sourceBadge");
     els.sourceTriggerText = $("#sourceTriggerText");
     els.sourceCheckboxes = $$("#sourceList input[type=checkbox]");
+    els.apiKeyGroup = $("#apiKeyGroup");
+    els.apiKeyFields = $$(".api-key-field");
+    els.apiKeyInputs = {};
+    els.apiKeySaves = {};
+    for (const provider of ["unsplash", "pexels", "pixabay", "smithsonian", "brave"]) {
+      els.apiKeyInputs[provider] = $(`#api${provider.charAt(0).toUpperCase() + provider.slice(1)}`);
+      els.apiKeySaves[provider] = $(`#apiSave${provider.charAt(0).toUpperCase() + provider.slice(1)}`);
+    }
     els.searchOrientation = $("#searchOrientation");
     els.jobPanel = $("#jobPanel");
     els.jobClose = $("#jobClose");
@@ -116,12 +124,6 @@
     els.selectionDestination = $("#selectionDestination");
     els.selectionFolderName = $("#selectionFolderName");
     els.inboxToggle = $("#inboxToggle");
-    els.unsplashKeyField = $("#unsplashKeyField");
-    els.unsplashKeyToggle = $("#unsplashKeyToggle");
-    els.unsplashKey = $("#unsplashKey");
-    els.unsplashKeySave = $("#unsplashKeySave");
-    els.unsplashKeyStatus = $("#unsplashKeyStatus");
-    els.unsplashKeyBadge = $("#unsplashKeyBadge");
     els.moveBar = $("#moveBar");
     els.moveCount = $("#moveCount");
     els.moveFolderName = $("#moveFolderName");
@@ -358,20 +360,9 @@
       if (els.inboxToggle) els.inboxToggle.checked = state.inboxMode;
     }
 
-    if (data.unsplash_key_configured !== undefined) {
-      state.unsplashKeyConfigured = Boolean(data.unsplash_key_configured);
-      if (els.unsplashKeyStatus) {
-        els.unsplashKeyStatus.textContent = state.unsplashKeyConfigured
-          ? "Cle Unsplash configuree"
-          : "Cle Unsplash non configuree";
-      }
-      if (state.unsplashKeyConfigured && els.unsplashKeyField) {
-        els.unsplashKeyField.querySelector(".field-body").hidden = true;
-        els.unsplashKeyToggle.setAttribute("aria-expanded", "false");
-        if (els.unsplashKeyBadge) {
-          els.unsplashKeyBadge.textContent = "Configuree";
-        }
-      }
+    if (data.api_keys_configured !== undefined) {
+      state.apiKeysConfigured = data.api_keys_configured;
+      updateApiKeyVisibility();
     }
 
     if (data.pagination) {
@@ -1417,46 +1408,6 @@
       }
     });
 
-    els.unsplashKeyToggle.addEventListener("click", () => {
-      const expanded = els.unsplashKeyToggle.getAttribute("aria-expanded") === "true";
-      const body = els.unsplashKeyField.querySelector(".field-body");
-      els.unsplashKeyToggle.setAttribute("aria-expanded", String(!expanded));
-      body.hidden = expanded;
-    });
-
-    els.unsplashKeySave.addEventListener("click", async () => {
-      const key = (els.unsplashKey.value || "").trim();
-      try {
-        const data = await api("/api/config/unsplash", {
-          method: "POST",
-          body: { unsplash_access_key: key },
-        });
-        state.unsplashKeyConfigured = Boolean(data.configured);
-        const body = els.unsplashKeyField.querySelector(".field-body");
-        body.hidden = true;
-        els.unsplashKeyToggle.setAttribute("aria-expanded", "false");
-        if (els.unsplashKeyBadge) {
-          els.unsplashKeyBadge.textContent = state.unsplashKeyConfigured
-            ? "Configuree"
-            : "";
-        }
-        if (els.unsplashKeyStatus) {
-          els.unsplashKeyStatus.textContent = state.unsplashKeyConfigured
-            ? "Cle Unsplash enregistree"
-            : "Cle Unsplash supprimee";
-        }
-        showToast(
-          state.unsplashKeyConfigured
-            ? "Cle Unsplash enregistree (source Unsplash disponible)"
-            : "Cle Unsplash supprimee",
-          "info",
-          4000
-        );
-      } catch (error) {
-        showToast(error.message, "error", 6000);
-      }
-    });
-
     function updateSourceUI() {
       const all = state.selectedSources.includes("all");
       const individual = state.selectedSources.filter((s) => s !== "all");
@@ -1507,6 +1458,66 @@
         }
         updateSourceUI();
       });
+    });
+
+    // ── Gestion des cles API ──────────────────────────────────
+
+    function needsApiKey(source) {
+      return ["unsplash", "pexels", "pixabay", "smithsonian", "brave"].includes(source);
+    }
+
+    function updateApiKeyVisibility() {
+      const hasKeySource = state.selectedSources.some((s) => needsApiKey(s));
+      if (els.apiKeyGroup) {
+        els.apiKeyGroup.hidden = !hasKeySource;
+      }
+      els.apiKeyFields.forEach((field) => {
+        const provider = field.id.replace("field-", "");
+        const selected = state.selectedSources.includes(provider);
+        field.hidden = !selected;
+      });
+    }
+
+    for (const provider of ["unsplash", "pexels", "pixabay", "smithsonian", "brave"]) {
+      const input = els.apiKeyInputs[provider];
+      const saveBtn = els.apiKeySaves[provider];
+      if (!input || !saveBtn) continue;
+
+      input.addEventListener("input", () => {
+        saveBtn.disabled = !(input.value || "").trim();
+      });
+
+      saveBtn.addEventListener("click", async () => {
+        const key = (input.value || "").trim();
+        try {
+          const data = await api("/api/config/api-key", {
+            method: "POST",
+            body: { provider, key },
+          });
+          saveBtn.textContent = "OK";
+          setTimeout(() => { saveBtn.textContent = "Enregistrer"; }, 1200);
+          showToast(
+            data.configured
+              ? `Cle ${provider} enregistree`
+              : `Cle ${provider} supprimee`,
+            "info",
+            3000
+          );
+        } catch (error) {
+          showToast(error.message, "error", 6000);
+        }
+      });
+    }
+
+    // Mettre a jour l'affichage des cles quand les sources changent
+    const origUpdateSourceUI = updateSourceUI;
+    updateSourceUI = function () {
+      origUpdateSourceUI();
+      updateApiKeyVisibility();
+    };
+
+    els.sourceCheckboxes.forEach((cb) => {
+      cb.addEventListener("change", updateApiKeyVisibility);
     });
 
     els.selectionSelectAll.addEventListener("click", toggleSelectAll);

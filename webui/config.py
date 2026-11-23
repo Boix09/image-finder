@@ -15,7 +15,16 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8420
 DEFAULT_INBOX_MODE = False
 DEFAULT_INBOX_FOLDER = "inbox"
-DEFAULT_UNSPLASH_ACCESS_KEY = ""
+
+# Sources qui requient une cle API
+API_KEY_SOURCES = ("unsplash", "pexels", "pixabay", "smithsonian", "brave")
+ENV_VAR_FOR_SOURCE = {
+    "unsplash": "UNSPLASH_ACCESS_KEY",
+    "pexels": "PEXELS_API_KEY",
+    "pixabay": "PIXABAY_API_KEY",
+    "smithsonian": "SMITHSONIAN_API_KEY",
+    "brave": "BRAVE_API_KEY",
+}
 
 
 def default_config_path() -> Path:
@@ -26,7 +35,7 @@ def default_config_path() -> Path:
 
 
 class WebConfig:
-    """Charge et sauvegarde le repertoire racine de la bibliotheque."""
+    """Charge et sauvegarde le repertoire racine de la bibliotheque et les cles API."""
 
     def __init__(
         self,
@@ -39,7 +48,7 @@ class WebConfig:
         self._root = DEFAULT_ROOT
         self._inbox_mode = DEFAULT_INBOX_MODE
         self._inbox_folder = DEFAULT_INBOX_FOLDER
-        self._unsplash_access_key = DEFAULT_UNSPLASH_ACCESS_KEY
+        self._api_keys: dict[str, str] = {source: "" for source in API_KEY_SOURCES}
         self.load()
 
         env_root = os.environ.get("IMAGE_FINDER_WEB_ROOT")
@@ -68,7 +77,15 @@ class WebConfig:
 
     @property
     def unsplash_access_key(self) -> str:
-        return self._unsplash_access_key
+        return self._api_keys.get("unsplash", "")
+
+    @property
+    def api_keys(self) -> dict[str, str]:
+        return dict(self._api_keys)
+
+    @property
+    def api_keys_configured(self) -> dict[str, bool]:
+        return {source: bool(self._api_keys.get(source, "").strip()) for source in API_KEY_SOURCES}
 
     @property
     def inbox_root(self) -> Path:
@@ -93,10 +110,15 @@ class WebConfig:
         raw_inbox_folder = data.get("inbox_folder")
         if isinstance(raw_inbox_folder, str) and raw_inbox_folder.strip():
             self._inbox_folder = raw_inbox_folder.strip()
-        raw_unsplash_key = data.get("unsplash_access_key")
-        if isinstance(raw_unsplash_key, str) and raw_unsplash_key.strip():
-            self._unsplash_access_key = raw_unsplash_key.strip()
-            os.environ["UNSPLASH_ACCESS_KEY"] = self._unsplash_access_key
+        raw_keys = data.get("api_keys")
+        if isinstance(raw_keys, dict):
+            for source in API_KEY_SOURCES:
+                value = raw_keys.get(source)
+                if isinstance(value, str) and value.strip():
+                    self._api_keys[source] = value.strip()
+                    env_var = ENV_VAR_FOR_SOURCE.get(source)
+                    if env_var:
+                        os.environ[env_var] = self._api_keys[source]
 
     def _normalize(self, value: str | Path) -> Path:
         text = os.path.expandvars(str(value)).strip()
@@ -139,7 +161,7 @@ class WebConfig:
             "root": str(self._root),
             "inbox_mode": self._inbox_mode,
             "inbox_folder": self._inbox_folder,
-            "unsplash_access_key": self._unsplash_access_key,
+            "api_keys": dict(self._api_keys),
         }
         descriptor, temporary = tempfile.mkstemp(
             prefix=".web_config-", suffix=".tmp", dir=str(self.path.parent)
@@ -182,11 +204,15 @@ class WebConfig:
         if persist:
             self.save()
 
-    def set_unsplash_access_key(self, key: str, *, persist: bool = True) -> None:
-        self._unsplash_access_key = str(key or "").strip()
-        if self._unsplash_access_key:
-            os.environ["UNSPLASH_ACCESS_KEY"] = self._unsplash_access_key
-        elif "UNSPLASH_ACCESS_KEY" in os.environ:
-            del os.environ["UNSPLASH_ACCESS_KEY"]
+    def set_api_key(self, source: str, key: str, *, persist: bool = True) -> None:
+        if source not in API_KEY_SOURCES:
+            raise ValueError(f"source non supportee pour une cle API : {source}")
+        self._api_keys[source] = str(key or "").strip()
+        env_var = ENV_VAR_FOR_SOURCE.get(source)
+        if env_var:
+            if self._api_keys[source]:
+                os.environ[env_var] = self._api_keys[source]
+            elif env_var in os.environ:
+                del os.environ[env_var]
         if persist:
             self.save()

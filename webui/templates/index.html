@@ -192,26 +192,57 @@
                   <button class="source-trigger" id="sourceTrigger" type="button" aria-expanded="false">
                     <span id="sourceTriggerText">Toutes</span>
                     <span id="sourceBadge" class="source-badge">13</span>
-                    <svg class="icon select-chevron"><use href="#icon-chevron-down"/></svg>
                   </button>
                   <div class="source-list" id="sourceList" hidden>
-                    <label class="source-option"><input type="checkbox" value="all" checked><span>Toutes <span class="badge-beta">BETA</span></span></label>
-                    <label class="source-option"><input type="checkbox" value="yandex"><span>Yandex Images <span class="badge-beta">BETA</span></span></label>
-                    <label class="source-option"><input type="checkbox" value="commons"><span>Wikimedia Commons <span class="badge-beta">BETA</span></span></label>
-                    <label class="source-option"><input type="checkbox" value="ddg"><span>DuckDuckGo <span class="badge-beta">BETA</span></span></label>
-                    <label class="source-option"><input type="checkbox" value="openverse"><span>Openverse <span class="badge-beta">BETA</span></span></label>
-                    <label class="source-option"><input type="checkbox" value="unsplash"><span>Unsplash <span class="badge-beta">BETA</span></span></label>
-                    <label class="source-option"><input type="checkbox" value="pexels"><span>Pexels <span class="badge-beta">BETA</span></span></label>
-                    <label class="source-option"><input type="checkbox" value="pixabay"><span>Pixabay <span class="badge-beta">BETA</span></span></label>
-                    <label class="source-option"><input type="checkbox" value="nasa"><span>NASA Image Library <span class="badge-beta">BETA</span></span></label>
-                    <label class="source-option"><input type="checkbox" value="metmuseum"><span>Metropolitan Museum <span class="badge-beta">BETA</span></span></label>
-                    <label class="source-option"><input type="checkbox" value="loc"><span>Library of Congress <span class="badge-beta">BETA</span></span></label>
-                    <label class="source-option"><input type="checkbox" value="smithsonian"><span>Smithsonian Open Access <span class="badge-beta">BETA</span></span></label>
-                    <label class="source-option"><input type="checkbox" value="freeimagedomain"><span>FreeImageDomain <span class="badge-beta">BETA</span></span></label>
-                    <label class="source-option"><input type="checkbox" value="brave"><span>Brave Search <span class="badge-beta">BETA</span></span></label>
+                    <label class="source-option"><input type="checkbox" value="all" checked><span>Toutes</span></label>
+                    <label class="source-option"><input type="checkbox" value="yandex"><span>Yandex Images</span></label>
+                    <label class="source-option"><input type="checkbox" value="commons"><span>Wikimedia Commons</span></label>
+                    <label class="source-option"><input type="checkbox" value="ddg"><span>DuckDuckGo</span></label>
+                    <label class="source-option"><input type="checkbox" value="openverse"><span>Openverse</span></label>
+                    <label class="source-option"><input type="checkbox" value="unsplash"><span>Unsplash</span></label>
+                    <label class="source-option" data-needs-key="pexels"><input type="checkbox" value="pexels"><span>Pexels <span class="badge-beta">BETA</span></span></label>
+                    <label class="source-option" data-needs-key="pixabay"><input type="checkbox" value="pixabay"><span>Pixabay <span class="badge-beta">BETA</span></span></label>
+                    <label class="source-option" data-needs-key="nasa"><input type="checkbox" value="nasa"><span>NASA Image Library <span class="badge-beta">BETA</span></span></label>
+                    <label class="source-option" data-needs-key="metmuseum"><input type="checkbox" value="metmuseum"><span>Metropolitan Museum <span class="badge-beta">BETA</span></span></label>
+                    <label class="source-option" data-needs-key="loc"><input type="checkbox" value="loc"><span>Library of Congress <span class="badge-beta">BETA</span></span></label>
+                    <label class="source-option" data-needs-key="smithsonian"><input type="checkbox" value="smithsonian"><span>Smithsonian Open Access <span class="badge-beta">BETA</span></span></label>
+                    <label class="source-option" data-needs-key="freeimagedomain"><input type="checkbox" value="freeimagedomain"><span>FreeImageDomain <span class="badge-beta">BETA</span></span></label>
+                    <label class="source-option" data-needs-key="brave"><input type="checkbox" value="brave"><span>Brave Search <span class="badge-beta">BETA</span></span></label>
                   </div>
                 </div>
               </label>
+
+              <!-- Champs de cles API (apparait si une source avec cle est selectionnee) -->
+              <div class="api-key-group" id="apiKeyGroup" hidden>
+                <span class="field-label">Cles API</span>
+                <div class="api-key-fields" id="apiKeyFields">
+                  <div class="api-key-field" id="field-unsplash" hidden>
+                    <label>Unsplash Access Key</label>
+                    <input type="password" id="apiUnsplash" placeholder="UNSPLASH_ACCESS_KEY">
+                    <button class="btn btn-small" id="apiSaveUnsplash" type="button">Enregistrer</button>
+                  </div>
+                  <div class="api-key-field" id="field-pexels" hidden>
+                    <label>Pexels API Key</label>
+                    <input type="password" id="apiPexels" placeholder="PEXELS_API_KEY">
+                    <button class="btn btn-small" id="apiSavePexels" type="button">Enregistrer</button>
+                  </div>
+                  <div class="api-key-field" id="field-pixabay" hidden>
+                    <label>Pixabay API Key</label>
+                    <input type="password" id="apiPixabay" placeholder="PIXABAY_API_KEY">
+                    <button class="btn btn-small" id="apiSavePixabay" type="button">Enregistrer</button>
+                  </div>
+                  <div class="api-key-field" id="field-smithsonian" hidden>
+                    <label>Smithsonian API Key</label>
+                    <input type="password" id="apiSmithsonian" placeholder="SMITHSONIAN_API_KEY">
+                    <button class="btn btn-small" id="apiSaveSmithsonian" type="button">Enregistrer</button>
+                  </div>
+                  <div class="api-key-field" id="field-brave" hidden>
+                    <label>Brave Search API Key</label>
+                    <input type="password" id="apiBrave" placeholder="BRAVE_API_KEY">
+                    <button class="btn btn-small" id="apiSaveBrave" type="button">Enregistrer</button>
+                  </div>
+                </div>
+              </div>
               <label class="field">
                 <span class="field-label">Orientation</span>
                 <span class="select-wrap">
