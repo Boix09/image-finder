@@ -15,6 +15,7 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8420
 DEFAULT_INBOX_MODE = False
 DEFAULT_INBOX_FOLDER = "inbox"
+DEFAULT_PREVIEW_ENABLED = True
 
 # Sources qui requient une cle API
 API_KEY_SOURCES = ("unsplash", "pexels", "pixabay", "smithsonian", "brave")
@@ -48,6 +49,7 @@ class WebConfig:
         self._root = DEFAULT_ROOT
         self._inbox_mode = DEFAULT_INBOX_MODE
         self._inbox_folder = DEFAULT_INBOX_FOLDER
+        self._preview_enabled = DEFAULT_PREVIEW_ENABLED
         self._api_keys: dict[str, str] = {source: "" for source in API_KEY_SOURCES}
         self.load()
 
@@ -74,6 +76,10 @@ class WebConfig:
     @property
     def inbox_folder(self) -> str:
         return self._inbox_folder
+
+    @property
+    def preview_enabled(self) -> bool:
+        return self._preview_enabled
 
     @property
     def unsplash_access_key(self) -> str:
@@ -110,6 +116,9 @@ class WebConfig:
         raw_inbox_folder = data.get("inbox_folder")
         if isinstance(raw_inbox_folder, str) and raw_inbox_folder.strip():
             self._inbox_folder = raw_inbox_folder.strip()
+        raw_preview = data.get("preview_enabled")
+        if isinstance(raw_preview, bool):
+            self._preview_enabled = raw_preview
         raw_keys = data.get("api_keys")
         if isinstance(raw_keys, dict):
             for source in API_KEY_SOURCES:
@@ -161,6 +170,7 @@ class WebConfig:
             "root": str(self._root),
             "inbox_mode": self._inbox_mode,
             "inbox_folder": self._inbox_folder,
+            "preview_enabled": self._preview_enabled,
             "api_keys": dict(self._api_keys),
         }
         descriptor, temporary = tempfile.mkstemp(
@@ -201,6 +211,11 @@ class WebConfig:
         name = str(name).strip() or DEFAULT_INBOX_FOLDER
         self._inbox_folder = name
         self.ensure_inbox()
+        if persist:
+            self.save()
+
+    def set_preview_enabled(self, enabled: bool, *, persist: bool = True) -> None:
+        self._preview_enabled = bool(enabled)
         if persist:
             self.save()
 

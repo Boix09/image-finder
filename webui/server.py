@@ -86,6 +86,7 @@ def create_app(
             "password_protected": bool(app.config["IMAGE_FINDER_PASSWORD"]),
             "inbox_mode": library.config.inbox_mode,
             "inbox_folder": library.config.inbox_folder,
+            "preview_enabled": library.config.preview_enabled,
             "api_keys_configured": library.config.api_keys_configured,
         }
 
@@ -403,6 +404,18 @@ def create_app(
             ok=True,
             inbox_mode=library.config.inbox_mode,
             inbox_folder=library.config.inbox_folder,
+        )
+
+    @app.post("/api/config/preview")
+    def api_config_preview():
+        payload = json_payload()
+        preview_enabled = payload.get("preview_enabled")
+        if not isinstance(preview_enabled, bool):
+            raise ApiError("parametre preview_enabled requis (true/false)")
+        library.config.set_preview_enabled(preview_enabled)
+        return jsonify(
+            ok=True,
+            preview_enabled=library.config.preview_enabled,
         )
 
     @app.get("/api/config/api-key")

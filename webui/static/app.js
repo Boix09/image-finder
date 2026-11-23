@@ -41,6 +41,7 @@
     virtual: { rendered: 0, batchSize: 12, sentinelObserver: null },
     selection: { paths: new Set(), mode: "browser", folderName: "" },
     inboxMode: false,
+    previewEnabled: true,
     unsplashKeyConfigured: false,
     selectedSources: ["all", "yandex", "commons", "ddg", "openverse", "unsplash"],
   };
@@ -120,6 +121,7 @@
     els.selectionDestination = $("#selectionDestination");
     els.selectionFolderName = $("#selectionFolderName");
     els.inboxToggle = $("#inboxToggle");
+    els.previewToggle = $("#previewToggle");
     els.unsplashKeyField = $("#unsplashKeyField");
     els.unsplashKeyToggle = $("#unsplashKeyToggle");
     els.unsplashKey = $("#unsplashKey");
@@ -360,6 +362,11 @@
     if (data.inbox_mode !== undefined) {
       state.inboxMode = Boolean(data.inbox_mode);
       if (els.inboxToggle) els.inboxToggle.checked = state.inboxMode;
+    }
+
+    if (data.preview_enabled !== undefined) {
+      state.previewEnabled = Boolean(data.preview_enabled);
+      if (els.previewToggle) els.previewToggle.checked = state.previewEnabled;
     }
 
     if (data.unsplash_key_configured !== undefined) {
@@ -975,6 +982,10 @@
 
   function renderPreview(previews) {
     if (!els.jobPreviewPanel) return;
+    if (!state.previewEnabled) {
+      els.jobPreviewPanel.hidden = true;
+      return;
+    }
     if (!previews || !previews.length) {
       els.jobPreviewPanel.hidden = true;
       return;
@@ -1434,6 +1445,29 @@
         showToast(error.message, "error", 6000);
         els.inboxToggle.checked = !state.inboxMode;
         state.inboxMode = els.inboxToggle.checked;
+      }
+    });
+
+    els.previewToggle.addEventListener("change", async () => {
+      state.previewEnabled = els.previewToggle.checked;
+      try {
+        const data = await api("/api/config/preview", {
+          method: "POST",
+          body: { preview_enabled: state.previewEnabled },
+        });
+        state.previewEnabled = Boolean(data.preview_enabled);
+        els.previewToggle.checked = state.previewEnabled;
+        showToast(
+          state.previewEnabled
+            ? "Aperçu des résultats activé"
+            : "Aperçu des résultats désactivé",
+          "info",
+          4000
+        );
+      } catch (error) {
+        showToast(error.message, "error", 6000);
+        els.previewToggle.checked = !state.previewEnabled;
+        state.previewEnabled = els.previewToggle.checked;
       }
     });
 
