@@ -465,6 +465,20 @@ def create_app(
         result = library.delete_folder(target)
         return jsonify(ok=True, **result)
 
+    @app.post("/api/folders/rename")
+    def api_rename_folder():
+        if jobs.active():
+            raise JobConflict(
+                "attendez la fin de la recherche avant de renommer un dossier"
+            )
+        payload = json_payload()
+        old_name = str(payload.get("old_name") or "").strip()
+        new_name = str(payload.get("new_name") or "").strip()
+        if not old_name or not new_name:
+            raise ApiError("noms de dossier manquants")
+        result = library.rename_folder(old_name, new_name)
+        return jsonify(ok=True, name=result)
+
     @app.delete("/api/images")
     def api_delete_image():
         payload = json_payload()
@@ -515,7 +529,7 @@ def create_app(
         folder = requested_folder or detected or slugify(cleaned)
         folder = library.validate_folder_name(folder)
 
-        inbox_mode = bool(library.config.inbox_mode)
+        inbox_mode = bool(library.config.inbox_mode) and bool(requested_folder)
         inbox_folder = library.config.inbox_folder
 
         if inbox_mode:
