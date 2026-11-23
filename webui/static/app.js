@@ -362,7 +362,6 @@
 
     if (data.api_keys_configured !== undefined) {
       state.apiKeysConfigured = data.api_keys_configured;
-      updateApiKeyVisibility();
     }
 
     if (data.pagination) {
