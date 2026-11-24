@@ -130,6 +130,7 @@ def run_download(
     inbox_mode: bool = False,
     inbox_folder: str = "inbox",
     library_ref=None,
+    already_downloaded: list[str] | None = None,
 ) -> dict:
     """Cherche des images et telecharge les meilleures.
 
@@ -196,6 +197,10 @@ def run_download(
                 ):
                     continue
             filtered.append(candidate)
+
+        if already_downloaded:
+            skipped_urls = set(already_downloaded)
+            filtered = [c for c in filtered if c.image_url not in skipped_urls]
 
         _emit(
             progress,

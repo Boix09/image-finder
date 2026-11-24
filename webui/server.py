@@ -581,4 +581,14 @@ def create_app(
             raise ApiError("tache introuvable", 404)
         return jsonify(ok=True, cancelled=True)
 
+    @app.post("/api/jobs/<job_id>/resume")
+    def api_job_resume(job_id: str):
+        try:
+            job = jobs.resume(job_id)
+        except KeyError:
+            raise ApiError("tache introuvable", 404)
+        if job is None:
+            raise ApiError("tache deja en cours", 409)
+        return jsonify(ok=True, job=job), 202
+
     return app

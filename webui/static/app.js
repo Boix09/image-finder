@@ -83,6 +83,7 @@
     els.jobPanel = $("#jobPanel");
     els.jobClose = $("#jobClose");
     els.jobCancel = $("#jobCancel");
+    els.jobResume = $("#jobResume");
     els.jobTitle = $("#jobTitle");
     els.jobMessage = $("#jobMessage");
     els.jobCount = $("#jobCount");
@@ -975,6 +976,14 @@
     }
     els.jobElapsed.textContent = job.elapsed ? formatElapsed(job.elapsed) : "";
 
+
+    if (els.jobResume) {
+      const showResume = job.status === "cancelled" || job.status === "error";
+      els.jobResume.hidden = !showResume;
+      if (showResume) {
+        els.jobResume.title = `Reprendre (${job.downloaded_urls?.length || 0} image(s) deja telechargee(s))`;
+      }
+    }
     const lines = Array.isArray(job.log) ? job.log.slice(-12) : [];
     els.jobLog.textContent = lines.join("\n");
     els.jobLog.scrollTop = els.jobLog.scrollHeight;
@@ -991,13 +1000,13 @@
       return;
     }
     els.jobPreviewPanel.hidden = false;
-    const count = previews.length;
-    els.jobPreviewCount.textContent = `${count} image(s) trouvée(s)`;
-    els.jobPreviewGrid.innerHTML = previews
+    const limited = previews.slice(0, 20);
+    els.jobPreviewCount.textContent = `${limited.length} image(s) trouvée(s)`;
+    els.jobPreviewGrid.innerHTML = limited
       .map(
         (item, index) => `
         <div class="preview-card" data-index="${index}">
-          <img class="preview-img" src="${escapeHtml(item.image_url || "")}" alt="${escapeHtml(item.title || "")}" loading="lazy" decoding="async" onerror="this.style.display='none'; this.previousElementSibling?.style.display='none';">
+          <img class="preview-img" data-src="${escapeHtml(item.image_url || "")}" alt="${escapeHtml(item.title || "")}" decoding="async" onerror="this.style.display='none';">
           <div class="preview-info">
             <div class="preview-title" title="${escapeHtml(item.title || "")}">${escapeHtml(item.title || "Sans titre")}</div>
             <div class="preview-meta">${item.provider || ""} ${item.width && item.height ? "· " + item.width + "×" + item.height : ""}</div>
@@ -1005,6 +1014,33 @@
         </div>`
       )
       .join("");
+    observePreviewImages();
+  }
+
+  function observePreviewImages() {
+    if (!window.IntersectionObserver) {
+      $$(".preview-img[data-src]").forEach((img) => {
+        img.src = img.dataset.src;
+        delete img.dataset.src;
+      });
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const img = entry.target;
+            if (img.dataset.src) {
+              img.src = img.dataset.src;
+              delete img.dataset.src;
+            }
+            observer.unobserve(img);
+          }
+        }
+      },
+      { rootMargin: "300px", threshold: 0 }
+    );
+    $$(".preview-img[data-src]").forEach((img) => observer.observe(img));
   }
 
   async function finishJob(job) {
@@ -1681,6 +1717,20 @@
         els.searchBtn.disabled = false;
         els.searchBtn.innerHTML = `<svg class="icon"><use href="#icon-sparkles"/></svg><span>Rechercher</span>`;
         showToast("Recherche annulee", "info", 3000);
+      } catch (error) {
+        showToast(error.message, "error", 6000);
+      }
+    });
+
+    els.jobResume.addEventListener("click", async () => {
+      if (!state.jobId) return;
+      try {
+        window.clearTimeout(state.pollTimer);
+        const data = await api(`/api/jobs/${encodeURIComponent(state.jobId)}/resume`, {
+          method: "POST",
+        });
+        attachJob(data.job);
+        showToast("Reprise du telechargement", "info", 3000);
       } catch (error) {
         showToast(error.message, "error", 6000);
       }

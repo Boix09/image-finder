@@ -42,6 +42,7 @@ class Job:
     error: str | None = None
     cancelled: bool = False
     preview: list = field(default_factory=list)
+    downloaded_urls: list[str] = field(default_factory=list)
 
     def payload(self) -> dict:
         end = self.finished_at or time.time()
@@ -66,6 +67,7 @@ class Job:
             "error": self.error,
             "cancelled": self.cancelled,
             "preview": self.preview,
+            "downloaded_urls": self.downloaded_urls,
         }
 
 
@@ -111,6 +113,7 @@ class JobManager:
         inbox_mode: bool = False,
         inbox_folder: str = "inbox",
         library_ref=None,
+        already_downloaded: list[str] | None = None,
     ) -> dict:
         with self._lock:
             active = self._active_locked()
@@ -131,6 +134,7 @@ class JobManager:
                 inbox_mode=inbox_mode,
                 inbox_folder=inbox_folder,
                 library_ref=library_ref,
+                downloaded_urls=list(already_downloaded or []),
             )
             self._jobs[job.id] = job
             self._order.append(job.id)
@@ -148,6 +152,29 @@ class JobManager:
             )
             thread.start()
             return job.payload()
+
+    def resume(self, job_id: str) -> dict | None:
+        """Relance un job interrompu en ignorant les images deja telechargees."""
+        with self._lock:
+            old_job = self._jobs.get(job_id)
+            if old_job is None:
+                raise KeyError(job_id)
+            if old_job.status in {"queued", "running"}:
+                return old_job.payload()
+            urls = list(old_job.downloaded_urls or [])
+        return self.submit(
+            request=old_job.request,
+            folder=old_job.folder,
+            output_dir=old_job.output_dir,
+            limit=old_job.limit,
+            source=old_job.source,
+            orientation=old_job.orientation,
+            min_side=old_job.min_side,
+            inbox_mode=old_job.inbox_mode,
+            inbox_folder=old_job.inbox_folder,
+            library_ref=old_job.library_ref,
+            already_downloaded=urls,
+        )
 
     def cancel(self, job_id: str) -> None:
         """Annule la recherche en cours (marque le job comme annule)."""
@@ -204,7 +231,7 @@ class JobManager:
                 job = self._jobs.get(job_id)
                 if job is None:
                     return
-            library_ref = job.library_ref
+                library_ref = job.library_ref
             result = run_download(
                 job_request := self._job_field(job_id, "request"),
                 output=self._job_field(job_id, "output_dir"),
@@ -218,6 +245,7 @@ class JobManager:
                 inbox_mode=self._job_field(job_id, "inbox_mode"),
                 inbox_folder=self._job_field(job_id, "inbox_folder"),
                 library_ref=library_ref,
+                already_downloaded=list(job.downloaded_urls or []),
             )
             with self._lock:
                 job = self._jobs.get(job_id)
@@ -243,6 +271,11 @@ class JobManager:
                     "files": list(result.get("files") or [])[:60],
                     "source_errors": result.get("source_errors") or {},
                 }
+                job.downloaded_urls = [
+                    img.get("image_url")
+                    for img in (result.get("images") or [])
+                    if img.get("image_url")
+                ]
                 for line in result.get("log") or []:
                     text = str(line).strip()
                     if text and (not job.log or job.log[-1] != text):
