@@ -4,14 +4,19 @@ from __future__ import annotations
 
 import gzip
 import hmac
+import hashlib
 import secrets
+import tempfile
 from pathlib import Path
 from urllib.parse import quote
+
+import requests
 
 from flask import Flask, Response, jsonify, render_template, request, send_file
 
 from imagefinder import __version__
 from imagefinder.fileutil import slugify
+from imagefinder.quality import RESAMPLE
 from imagefinder.service import (
     ALLOWED_ORIENTATIONS,
     ALLOWED_SOURCES,
@@ -27,6 +32,14 @@ from .library import Library, LibraryError
 from .thumbs import Thumbnailer
 
 VERSION = __version__
+
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/124.0 Safari/537.36"
+)
+CHUNK_SIZE = 64 * 1024
+CACHE_VERSION = 4
 
 
 class ApiError(Exception):
@@ -265,7 +278,11 @@ def create_app(
     @app.get("/api/thumb")
     def api_thumb():
         relative = request.args.get("path") or ""
-        width = _as_int(request.args.get("w"), 640)
+        width = _as_int(request.args.get("w"), 480)
+
+        if relative.startswith("http://") or relative.startswith("https://"):
+            return _thumb_from_url(relative, width)
+
         path, mimetype = thumbnails.get(relative, width)
         return send_file(
             path,
@@ -273,6 +290,88 @@ def create_app(
             conditional=True,
             max_age=31536000,
         )
+
+    def _thumb_from_url(url: str, width: int) -> Response:
+        """Telecharge une image distante, cree une miniature et la sert avec cache."""
+        digest = hashlib.sha1(f"{url}|{width}|v{CACHE_VERSION}".encode("utf-8")).hexdigest()
+        cache_dir = _cache_dir()
+        folder = cache_dir / digest[:2]
+        target = folder / f"{digest[2:]}.webp"
+        if target.is_file():
+            return send_file(
+                target,
+                mimetype="image/webp",
+                conditional=True,
+                max_age=31536000,
+            )
+
+        try:
+            with requests.Session() as session:
+                session.headers.update(
+                    {
+                        "User-Agent": USER_AGENT if "USER_AGENT" in dir() else "Mozilla/5.0",
+                        "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+                    }
+                )
+                with session.get(url, stream=True, timeout=(10, 20)) as response:
+                    response.raise_for_status()
+                    content_type = (
+                        response.headers.get("Content-Type", "").split(";")[0].strip().lower()
+                    )
+                    if not content_type.startswith("image/"):
+                        raise ValueError(f"le contenu n'est pas une image ({content_type})")
+                    temporary = folder / f".{digest[2:]}.tmp"
+                    folder.mkdir(parents=True, exist_ok=True)
+                    try:
+                        with temporary.open("wb") as file:
+                            for chunk in response.iter_content(CHUNK_SIZE):
+                                if chunk:
+                                    file.write(chunk)
+                        if not PIL_AVAILABLE:
+                            return send_file(
+                                temporary,
+                                mimetype=content_type or "application/octet-stream",
+                                conditional=True,
+                                max_age=31536000,
+                            )
+                        from PIL import Image, ImageOps
+                        with Image.open(temporary) as image:
+                            try:
+                                image.draft("RGB", (width * 2, width * 2))
+                            except Exception:
+                                pass
+                            image = ImageOps.exif_transpose(image)
+                            if getattr(image, "is_animated", False):
+                                image.seek(0)
+                            image.thumbnail((width, width * 2), RESAMPLE or Image.LANCZOS)
+                            if image.mode not in {"RGB", "RGBA"}:
+                                image = image.convert("RGB")
+                            image.save(target, "WEBP", quality=82, method=4)
+                    finally:
+                        try:
+                            temporary.unlink(missing_ok=True)
+                        except OSError:
+                            pass
+            return send_file(
+                target,
+                mimetype="image/webp",
+                conditional=True,
+                max_age=31536000,
+            )
+        except Exception:
+            # En cas d'echec, servir une image transparente 1x1 pour ne pas casser l'affichage
+            blank = Path(tempfile.gettempdir()) / "image-finder-blank.webp"
+            if not blank.is_file() and PIL_AVAILABLE:
+                from PIL import Image
+                Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(blank, "WEBP")
+            if blank.is_file():
+                return send_file(
+                    blank,
+                    mimetype="image/webp",
+                    max_age=60,
+                )
+            return Response("", status=204)
+
 
     def _image_response(relative: str, *, attachment: bool):
         path = library.image_path(relative)

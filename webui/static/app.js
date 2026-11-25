@@ -1004,9 +1004,13 @@
     els.jobPreviewCount.textContent = `${limited.length} image(s) trouvée(s)`;
     els.jobPreviewGrid.innerHTML = limited
       .map(
-        (item, index) => `
+        (item, index) => {
+          const thumbSrc = item.image_url
+            ? `/api/thumb?path=${encodeURIComponent(item.image_url)}&w=240`
+            : "";
+          return `
         <div class="preview-card" data-index="${index}">
-          <img class="preview-img" data-src="${escapeHtml(item.image_url || "")}" alt="${escapeHtml(item.title || "")}" decoding="async" onerror="this.style.display='none';">
+          <img class="preview-img" data-src="${escapeHtml(thumbSrc)}" alt="${escapeHtml(item.title || "")}" decoding="async" onerror="this.style.display='none';">
           <div class="preview-info">
             <div class="preview-title" title="${escapeHtml(item.title || "")}">${escapeHtml(item.title || "Sans titre")}</div>
             <div class="preview-meta">${item.provider || ""} ${item.width && item.height ? "· " + item.width + "×" + item.height : ""}</div>
